@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>Fit Gravity · สแกนคูปอง</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700;800&family=Orbitron:wght@600;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<style>
+:root{
+  color-scheme: dark;
+  --bg:#0F1B33;
+  --bg-grad: radial-gradient(135% 110% at 50% -10%, #1D3054 0%, #14223F 55%, #0C1729 100%);
+  --surface:#1B2A4A; --surface-2:#16233E;
+  --line:#28395C; --line-strong:#33476F;
+  --ink:#EDF2FA; --ink-2:#A7B6CE; --ink-3:#67789A;
+  --green:#57C68C; --green-bg:rgba(87,198,140,.14);
+  --red:#F08066; --red-bg:rgba(240,128,102,.14);
+  --amber:#F2B33D; --amber-bg:rgba(242,179,61,.14);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.28), 0 2px 10px rgba(0,0,0,.26);
+  --shadow-md:0 8px 26px rgba(0,0,0,.45);
+  --radius:16px; --radius-sm:11px;
+  --accent:#F2A93B; --accent-deep:#FFC96B; --accent-soft:rgba(242,169,59,.15);
+  --accent-grad:linear-gradient(135deg,#FFC85C 0%,#E8930C 100%);
+  --metal-grad:linear-gradient(120deg,#D9922A 0%,#FFDD8C 48%,#C67F16 100%);
+  --on-accent:#241703;
+}
+*{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html,body{ margin:0; }
+body{ font-family:"Inter","Noto Sans Thai",-apple-system,"Segoe UI",sans-serif;
+  background:var(--bg); background-image:var(--bg-grad); background-attachment:fixed;
+  color:var(--ink); min-height:100vh; -webkit-font-smoothing:antialiased; }
+.wrap{ max-width:480px; margin:0 auto; padding:16px 16px 40px; }
+.appbar{ position:sticky; top:0; z-index:40; background:rgba(13,23,44,.82); backdrop-filter:saturate(160%) blur(14px); border-bottom:1px solid var(--line); }
+.appbar-inner{ max-width:480px; margin:0 auto; padding:11px 16px; display:flex; align-items:center; gap:10px; }
+.logo{ width:36px; height:36px; border-radius:11px; display:grid; place-items:center; color:var(--on-accent); background:var(--accent-grad); box-shadow:var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,.4); flex-shrink:0; }
+.logo svg{ width:20px; height:20px; }
+.wordmark{ font-family:"Orbitron","Inter",sans-serif; font-weight:800; font-size:13.5px; letter-spacing:1.4px; background:var(--metal-grad); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.brand-tag{ font-size:10px; color:var(--ink-3); margin-top:3px; letter-spacing:1px; font-weight:700; }
+h1{ font-size:19px; font-weight:800; margin:8px 0 3px; }
+.sub{ color:var(--ink-2); font-size:12.5px; margin:0 0 16px; }
+input{ width:100%; border:1px solid var(--line-strong); border-radius:10px; padding:12px 13px; font-size:15px; background:var(--surface-2); color:var(--ink); font-family:inherit; transition:.15s; }
+input::placeholder{ color:var(--ink-3); }
+input:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+.label{ font-size:12px; color:var(--ink-2); margin-bottom:6px; display:block; font-weight:600; }
+.field{ margin-bottom:13px; }
+.btn-primary{ background:var(--accent-grad); color:var(--on-accent); border:none; border-radius:11px; padding:14px 16px; font-size:15px; font-weight:800; cursor:pointer; width:100%; box-shadow:var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,.4); transition:.12s; }
+.btn-primary:active{ transform:scale(.98); }
+.btn-primary:disabled{ opacity:.55; }
+.btn-ghost{ background:var(--surface); color:var(--ink-2); border:1px solid var(--line-strong); border-radius:11px; padding:13px 16px; font-size:14px; font-weight:700; cursor:pointer; width:100%; }
+.card{ border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); padding:16px; margin-bottom:12px; box-shadow:var(--shadow-sm); }
+.toast{ position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#EDF2FA; color:#14223F; padding:11px 20px; border-radius:999px; font-size:13px; font-weight:700; z-index:120; box-shadow:var(--shadow-md); white-space:nowrap; }
+.err-box{ background:var(--red-bg); color:var(--red); border:1px solid rgba(240,128,102,.4); border-radius:10px; padding:12px 14px; font-size:13.5px; margin-bottom:13px; font-weight:600; }
+.scan-wrap{ border-radius:var(--radius); overflow:hidden; border:1px solid var(--line); background:#000; position:relative; aspect-ratio:1/1; margin-bottom:12px; }
+#reader{ width:100%; }
+#reader video{ width:100% !important; object-fit:cover; }
+.scan-overlay{ position:absolute; inset:0; pointer-events:none; display:grid; place-items:center; }
+.scan-frame{ width:62%; aspect-ratio:1/1; border:3px solid rgba(255,255,255,.85); border-radius:18px; box-shadow:0 0 0 100vmax rgba(4,9,20,.35); }
+.divider-or{ display:flex; align-items:center; gap:10px; color:var(--ink-3); font-size:12px; margin:14px 0; }
+.divider-or::before,.divider-or::after{ content:""; flex:1; height:1px; background:var(--line); }
+.result-ic{ width:72px; height:72px; border-radius:50%; margin:4px auto 12px; display:grid; place-items:center; }
+.result-ic svg{ width:40px; height:40px; }
+.result-ic.ok{ background:var(--green-bg); color:var(--green); }
+.result-ic.bad{ background:var(--red-bg); color:var(--red); }
+.result-ic.warn{ background:var(--amber-bg); color:var(--amber); }
+.result-title{ text-align:center; font-size:20px; font-weight:800; }
+.result-sub{ text-align:center; color:var(--ink-2); font-size:13.5px; margin-top:5px; }
+.coupon-face{ border:1px dashed var(--line-strong); border-radius:14px; padding:16px; margin:16px 0; text-align:center; background:var(--surface-2); }
+.coupon-kind{ display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:999px; font-size:11px; font-weight:700; background:var(--accent-soft); color:var(--accent-deep); margin-bottom:8px; }
+.coupon-kind svg{ width:13px; height:13px; }
+.coupon-kind.coffee{ background:rgba(200,140,60,.16); color:#E3B26C; }
+.coupon-name{ font-size:17px; font-weight:800; }
+.coupon-code{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:18px; font-weight:800; letter-spacing:1.6px; color:var(--accent-deep); margin-top:8px; }
+.coupon-meta{ font-size:12px; color:var(--ink-3); margin-top:8px; }
+.st-chip{ display:inline-block; padding:4px 12px; border-radius:999px; font-size:12px; font-weight:700; margin-top:8px; }
+.st-active{ background:var(--green-bg); color:var(--green); }
+.st-redeemed{ background:rgba(167,182,206,.14); color:var(--ink-2); }
+.st-expired{ background:var(--red-bg); color:var(--red); }
+.hint{ font-size:11.5px; color:var(--ink-3); line-height:1.55; text-align:center; }
+.spin{ text-align:center; padding:30px; color:var(--ink-3); }
+.pin-dots{ display:flex; justify-content:center; gap:12px; margin:16px 0; }
+.pin-dot{ width:15px; height:15px; border-radius:50%; border:2px solid var(--line-strong); }
+.pin-dot.filled{ background:var(--accent); border-color:var(--accent); }
+.keypad{ display:grid; grid-template-columns:repeat(3,1fr); gap:9px; }
+.key{ padding:16px; border-radius:12px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:20px; font-weight:700; cursor:pointer; transition:.1s; }
+.key:active{ background:var(--surface-2); transform:scale(.96); }
+.key.wide{ font-size:14px; font-weight:700; }
+.badge-staff{ display:inline-flex; align-items:center; gap:6px; font-size:11px; color:var(--ink-3); background:var(--surface); border:1px solid var(--line); padding:5px 11px; border-radius:999px; }
+</style>
+</head>
+<body>
+
+<div class="appbar">
+  <div class="appbar-inner">
+    <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M4 8.5v7M17.5 6.5v11M20 8.5v7M6.5 12h11"/></svg></div>
+    <div><div class="wordmark">FIT GRAVITY</div><div class="brand-tag">จุดสแกนคูปอง · สำหรับพนักงาน</div></div>
+  </div>
+</div>
+
+<div class="wrap" id="app">
+  <div id="content"><div class="spin">กำลังโหลด...</div></div>
+</div>
+
+<script>
+var API_URL = "https://script.google.com/macros/s/AKfycbwQHtq7-3Ry1i7cVgblmIOnaLZSpfsKpZjpgiutP37ze_NP0Jn9TJ6pwXegwzt-t5yt/exec";
+var THAI_MONTHS = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+
+var state = {
+  view:"scan",         // scan | lookup | pin | result
+  code:"", coupon:null, result:null, resultKind:"", resultMsg:"",
+  pin:"", busy:false, scanError:""
+};
+var qr=null, qrRunning=false;
+
+function escapeHtml(s){ var d=document.createElement("div"); d.textContent=s==null?"":s; return d.innerHTML; }
+function showToast(msg){ var t=document.createElement("div"); t.className="toast"; t.textContent=msg; document.body.appendChild(t); setTimeout(function(){ t.remove(); },2400); }
+function fmtDT(s){ if(!s) return ""; var str=String(s); var p=str.slice(0,10).split("-"); var d=p.length>=3?Number(p[2])+" "+THAI_MONTHS[Number(p[1])-1]:str.slice(0,10); return d+" "+str.slice(11,16); }
+function fmtDateY(ds){ if(!ds) return "-"; var p=String(ds).slice(0,10).split("-"); if(p.length<3) return escapeHtml(ds); return Number(p[2])+" "+THAI_MONTHS[Number(p[1])-1]+" "+String(Number(p[0])+543).slice(-2); }
+
+async function apiCall(action, payload){
+  var res;
+  try{
+    var body=new URLSearchParams({ action:action });
+    if (payload) body.set("payload", JSON.stringify(payload));
+    res=await fetch(API_URL,{ method:"POST", redirect:"follow", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:body.toString() });
+  }catch(e){ throw new Error("เชื่อมต่อเครือข่ายไม่ได้"); }
+  var text=await res.text();
+  if (!res.ok) throw new Error("HTTP "+res.status);
+  var data;
+  try{ data=JSON.parse(text); }catch(e){ throw new Error("ข้อมูลจากเซิร์ฟเวอร์ไม่ถูกต้อง"); }
+  if (data && data.error) throw new Error(data.error);
+  return data;
+}
+
+/* extract code from a scanned URL or raw text */
+function extractCode(txt){
+  txt=String(txt||"").trim();
+  var m=txt.match(/[?&]code=([^&]+)/i);
+  if(m) return decodeURIComponent(m[1]).toUpperCase();
+  // otherwise assume the text itself is the code
+  return txt.toUpperCase();
+}
+
+function boot(){
+  var qs=new URLSearchParams(location.search);
+  var pre=qs.get("code");
+  if(pre){ lookupCode(extractCode(pre)); }
+  else { state.view="scan"; render(); }
+}
+
+async function startScanner(){
+  if(qrRunning || typeof Html5Qrcode==="undefined") return;
+  try{
+    qr=new Html5Qrcode("reader", { verbose:false });
+    await qr.start({ facingMode:"environment" }, { fps:10, qrbox:{ width:220, height:220 } },
+      function(decoded){ onScan(decoded); },
+      function(){} );
+    qrRunning=true;
+  }catch(e){
+    state.scanError="เปิดกล้องไม่ได้ — ใช้การพิมพ์โค้ดด้านล่างแทนได้เลย";
+    render();
+  }
+}
+async function stopScanner(){
+  if(qr && qrRunning){ try{ await qr.stop(); qr.clear(); }catch(e){} }
+  qrRunning=false; qr=null;
+}
+async function onScan(decoded){
+  if(state.busy) return;
+  state.busy=true;
+  await stopScanner();
+  lookupCode(extractCode(decoded));
+}
+
+async function lookupCode(code){
+  state.code=code; state.busy=true; state.view="lookup"; render();
+  try{
+    var r=await apiCall("getCoupon", { code:code });
+    state.coupon=r.coupon;
+    state.view="detail";
+  }catch(e){
+    state.resultKind="bad"; state.resultMsg=e.message; state.view="result";
+  }
+  state.busy=false; render();
+}
+
+function goScan(){ state.view="scan"; state.code=""; state.coupon=null; state.pin=""; render(); }
+function goManual(){ stopScanner(); state.view="manual"; render(); }
+
+async function submitManual(){
+  var code=document.getElementById("manualCode").value.trim();
+  if(!code){ showToast("กรอกโค้ดก่อน"); return; }
+  lookupCode(extractCode(code));
+}
+
+function goPin(){
+  if(state.coupon && state.coupon.status!=="active"){ showToast("คูปองนี้ใช้ไม่ได้"); return; }
+  state.pin=""; state.view="pin"; render();
+}
+function pinPress(d){
+  if(state.pin.length>=6) return;
+  state.pin+=d; render();
+  if(state.pin.length>=4){ /* allow up to submit */ }
+}
+function pinDel(){ state.pin=state.pin.slice(0,-1); render(); }
+async function pinSubmit(){
+  if(state.pin.length<4){ showToast("กรอก PIN อย่างน้อย 4 หลัก"); return; }
+  state.busy=true; render();
+  try{
+    var r=await apiCall("redeemCoupon", { code:state.code, staffPin:state.pin });
+    state.coupon=r.coupon;
+    state.resultKind="ok"; state.resultMsg="";
+    state.view="result";
+  }catch(e){
+    state.resultKind="bad"; state.resultMsg=e.message;
+    // stay on detail if it was just a wrong pin
+    if(String(e.message).indexOf("PIN")>=0){ state.pin=""; state.busy=false; render(); showToast(e.message); return; }
+    state.view="result";
+  }
+  state.busy=false; render();
+}
+
+/* ---------- render ---------- */
+function render(){
+  var c=document.getElementById("content");
+  if(state.view==="scan"){ c.innerHTML=renderScan(); setTimeout(startScanner, 60); return; }
+  if(state.view==="manual"){ c.innerHTML=renderManual(); return; }
+  if(state.view==="lookup"){ c.innerHTML='<div class="spin">กำลังตรวจสอบคูปอง...</div>'; return; }
+  if(state.view==="detail"){ c.innerHTML=renderCouponDetail(); return; }
+  if(state.view==="pin"){ c.innerHTML=renderPin(); return; }
+  if(state.view==="result"){ c.innerHTML=renderResult(); return; }
+}
+
+function renderScan(){
+  return '<h1>สแกนคูปอง</h1><p class="sub">เล็ง QR ของลูกค้าให้อยู่ในกรอบ ระบบจะตรวจให้อัตโนมัติ</p>'+
+    (state.scanError?'<div class="err-box">'+escapeHtml(state.scanError)+'</div>':"")+
+    '<div class="scan-wrap"><div id="reader"></div><div class="scan-overlay"><div class="scan-frame"></div></div></div>'+
+    '<div class="divider-or">หรือ</div>'+
+    '<button class="btn-ghost" onclick="goManual()">⌨️ พิมพ์โค้ดคูปองเอง</button>'+
+    '<p class="hint" style="margin-top:16px">ครั้งแรกเบราว์เซอร์จะขออนุญาตใช้กล้อง — กด "อนุญาต"</p>';
+}
+function renderManual(){
+  return '<h1>พิมพ์โค้ดคูปอง</h1><p class="sub">กรอกโค้ดบนคูปองของลูกค้า (เช่น FG-ABC123)</p>'+
+    '<div class="field"><input id="manualCode" placeholder="FG-XXXXXX" style="text-transform:uppercase;text-align:center;font-family:ui-monospace,monospace;letter-spacing:2px" onkeydown="if(event.key===\'Enter\')submitManual()"></div>'+
+    '<button class="btn-primary" onclick="submitManual()">ตรวจสอบคูปอง</button>'+
+    '<div style="height:10px"></div><button class="btn-ghost" onclick="goScan()">← กลับไปสแกน QR</button>';
+}
+function couponKindChip(cp){
+  return cp.kind==="coffee"
+    ? '<span class="coupon-kind coffee">'+icCoffee()+' คูปองกาแฟ</span>'
+    : '<span class="coupon-kind">'+icFit()+' คูปองเทรน</span>';
+}
+function stChip(st){
+  return st==="active" ? '<span class="st-chip st-active">ใช้งานได้</span>'
+    : st==="redeemed" ? '<span class="st-chip st-redeemed">ถูกใช้ไปแล้ว</span>'
+    : st==="cancelled" ? '<span class="st-chip st-redeemed">ถูกยกเลิก</span>'
+    : '<span class="st-chip st-expired">หมดอายุ</span>';
+}
+function renderCouponDetail(){
+  var cp=state.coupon||{};
+  var usable = cp.status==="active";
+  var html='<h1>รายละเอียดคูปอง</h1><p class="sub">ตรวจสอบก่อนยืนยันการใช้สิทธิ์</p>'+
+    '<div class="card"><div class="coupon-face">'+couponKindChip(cp)+
+    '<div class="coupon-name">'+escapeHtml(cp.title)+'</div>'+
+    '<div class="coupon-code">'+escapeHtml(cp.code)+'</div>'+
+    (cp.holderName?'<div class="coupon-meta">ผู้ถือ: '+escapeHtml(cp.holderName)+'</div>':"")+
+    '<div class="coupon-meta">ใช้ได้ถึง '+fmtDateY(cp.expiresAt)+'</div>'+
+    stChip(cp.status)+'</div>';
+  if(usable){
+    if(cp.kind==="coffee"){
+      html+='<button class="btn-primary" onclick="goPin()">✓ ยืนยันใช้สิทธิ์ (ใส่ PIN พนักงาน)</button>';
+    } else {
+      html+='<div class="err-box" style="margin-bottom:0">คูปองเทรนต้องให้โค้ชเป็นผู้ยืนยันด้วย PIN เทรนเนอร์</div>'+
+        '<div style="height:10px"></div><button class="btn-primary" onclick="goPin()">ยืนยันด้วย PIN เทรนเนอร์</button>';
+    }
+  } else if(cp.status==="redeemed"){
+    html+='<div class="err-box" style="margin-bottom:0">คูปองนี้ถูกใช้ไปแล้ว'+(cp.redeemedAt?" เมื่อ "+fmtDT(cp.redeemedAt):"")+(cp.redeemedBy?" ("+escapeHtml(cp.redeemedBy)+")":"")+'</div>';
+  } else {
+    html+='<div class="err-box" style="margin-bottom:0">คูปองนี้ใช้ไม่ได้ (สถานะ: '+escapeHtml(cp.status)+')</div>';
+  }
+  html+='</div><button class="btn-ghost" onclick="goScan()">← สแกนใบใหม่</button>';
+  return html;
+}
+function renderPin(){
+  var dots="";
+  for(var i=0;i<6;i++) dots+='<div class="pin-dot'+(i<state.pin.length?" filled":"")+'"></div>';
+  var keys="";
+  ["1","2","3","4","5","6","7","8","9"].forEach(function(k){ keys+='<button class="key" onclick="pinPress(\''+k+'\')">'+k+'</button>'; });
+  keys+='<button class="key wide" onclick="pinDel()">ลบ</button>';
+  keys+='<button class="key" onclick="pinPress(\'0\')">0</button>';
+  keys+='<button class="key wide" onclick="pinSubmit()" style="color:var(--accent-deep)">ยืนยัน</button>';
+  return '<h1>ใส่ PIN พนักงาน</h1><p class="sub">ยืนยันการใช้สิทธิ์: '+escapeHtml((state.coupon||{}).title||"")+'</p>'+
+    '<div class="card"><div class="pin-dots">'+dots+'</div>'+
+    '<div class="keypad">'+keys+'</div>'+
+    (state.busy?'<p class="hint" style="margin-top:14px">กำลังยืนยัน...</p>':"")+
+    '</div><button class="btn-ghost" onclick="goScan()">ยกเลิก</button>';
+}
+function renderResult(){
+  if(state.resultKind==="ok"){
+    var cp=state.coupon||{};
+    return '<div class="card" style="text-align:center;padding:26px 18px">'+
+      '<div class="result-ic ok">'+icCheck()+'</div>'+
+      '<div class="result-title">ใช้สิทธิ์สำเร็จ!</div>'+
+      '<div class="result-sub">'+escapeHtml(cp.title)+'</div>'+
+      '<div class="coupon-face" style="margin-top:18px">'+couponKindChip(cp)+
+      '<div class="coupon-code">'+escapeHtml(cp.code)+'</div>'+
+      (cp.holderName?'<div class="coupon-meta">ผู้ถือ: '+escapeHtml(cp.holderName)+'</div>':"")+
+      '<div class="coupon-meta">ใช้เมื่อ '+fmtDT(cp.redeemedAt)+'</div></div>'+
+      '<p class="hint">มอบสิทธิ์ให้ลูกค้าได้เลย · คูปองนี้ถูกทำเครื่องหมายว่าใช้แล้ว</p></div>'+
+      '<button class="btn-primary" onclick="goScan()">สแกนใบต่อไป</button>';
+  }
+  return '<div class="card" style="text-align:center;padding:26px 18px">'+
+    '<div class="result-ic bad">'+icX()+'</div>'+
+    '<div class="result-title">ใช้ไม่ได้</div>'+
+    '<div class="result-sub">'+escapeHtml(state.resultMsg||"คูปองไม่ถูกต้อง")+'</div></div>'+
+    '<button class="btn-primary" onclick="goScan()">สแกนใบใหม่</button>'+
+    '<div style="height:10px"></div><button class="btn-ghost" onclick="goManual()">พิมพ์โค้ดเอง</button>';
+}
+
+function icCheck(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'; }
+function icX(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>'; }
+function icCoffee(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h11v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V8Z"/><path d="M16 9h2.5a2.5 2.5 0 0 1 0 5H16"/><path d="M8 3.4c-.5.7-.5 1.5 0 2.2M11 3.4c-.5.7-.5 1.5 0 2.2"/></svg>'; }
+function icFit(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M4 8.5v7M17.5 6.5v11M20 8.5v7M6.5 12h11"/></svg>'; }
+
+boot();
+</script>
+</body>
+</html>

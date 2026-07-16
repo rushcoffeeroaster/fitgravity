@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>Fit Gravity · โค้ช</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700;800&family=Orbitron:wght@600;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{
+  color-scheme: dark;
+  --bg:#0F1B33;
+  --bg-grad: radial-gradient(135% 110% at 50% -10%, #1D3054 0%, #14223F 55%, #0C1729 100%);
+  --surface:#1B2A4A; --surface-2:#16233E;
+  --line:#28395C; --line-strong:#33476F;
+  --ink:#EDF2FA; --ink-2:#A7B6CE; --ink-3:#67789A;
+  --green:#57C68C; --green-bg:rgba(87,198,140,.14);
+  --red:#F08066; --red-bg:rgba(240,128,102,.14);
+  --amber:#F2B33D; --amber-bg:rgba(242,179,61,.14);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.28), 0 2px 10px rgba(0,0,0,.26);
+  --shadow-md:0 8px 26px rgba(0,0,0,.45);
+  --radius:16px; --radius-sm:11px;
+  --accent:#F2A93B; --accent-deep:#FFC96B; --accent-soft:rgba(242,169,59,.15);
+  --accent-grad:linear-gradient(135deg,#FFC85C 0%,#E8930C 100%);
+  --metal-grad:linear-gradient(120deg,#D9922A 0%,#FFDD8C 48%,#C67F16 100%);
+  --on-accent:#241703;
+}
+*{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html,body{ margin:0; }
+body{ font-family:"Inter","Noto Sans Thai",-apple-system,"Segoe UI",sans-serif;
+  background:var(--bg); background-image:var(--bg-grad); background-attachment:fixed;
+  color:var(--ink); padding-bottom:84px; -webkit-font-smoothing:antialiased; }
+.wrap{ max-width:560px; margin:0 auto; padding:14px 16px 8px; }
+.appbar{ position:sticky; top:0; z-index:40; background:rgba(13,23,44,.82); backdrop-filter:saturate(160%) blur(14px); border-bottom:1px solid var(--line); }
+.appbar-inner{ max-width:560px; margin:0 auto; padding:11px 16px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.brand{ display:flex; align-items:center; gap:10px; min-width:0; }
+.logo{ width:38px; height:38px; border-radius:12px; display:grid; place-items:center; color:var(--on-accent); background:var(--accent-grad); box-shadow:var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,.4); flex-shrink:0; }
+.logo svg{ width:21px; height:21px; }
+.wordmark{ font-family:"Orbitron","Inter",sans-serif; font-weight:800; font-size:14px; letter-spacing:1.4px; line-height:1; background:var(--metal-grad); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.brand-tag{ font-size:10px; color:var(--ink-3); margin-top:3px; letter-spacing:1px; font-weight:700; }
+h1{ font-size:20px; font-weight:800; margin:6px 0 2px; letter-spacing:.2px; }
+h2{ font-size:15px; font-weight:800; margin:18px 0 10px; }
+.sub{ color:var(--ink-2); font-size:12.5px; margin:0 0 14px; }
+input,select,textarea{ width:100%; border:1px solid var(--line-strong); border-radius:10px; padding:10px 11px; font-size:14px; background:var(--surface-2); color:var(--ink); font-family:inherit; transition:.15s; }
+input::placeholder,textarea::placeholder{ color:var(--ink-3); }
+input:focus,select:focus,textarea:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+textarea{ resize:vertical; min-height:60px; }
+.label{ font-size:12px; color:var(--ink-2); margin-bottom:5px; display:block; font-weight:600; }
+.field{ margin-bottom:13px; }
+.row{ display:flex; gap:8px; margin-bottom:11px; }
+.btn-primary{ background:var(--accent-grad); color:var(--on-accent); border:none; border-radius:10px; padding:10px 16px; font-size:14px; font-weight:800; cursor:pointer; white-space:nowrap; box-shadow:var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,.4); transition:.12s; }
+.btn-primary:active{ transform:scale(.97); }
+.btn-primary:disabled{ opacity:.55; }
+.btn-block{ width:100%; padding:13px; }
+.btn-ghost{ background:var(--surface); color:var(--ink-2); border:1px solid var(--line-strong); border-radius:10px; padding:10px 16px; font-size:13.5px; font-weight:700; cursor:pointer; white-space:nowrap; }
+.btn-danger{ background:var(--red-bg); color:var(--red); border:1px solid rgba(240,128,102,.4); border-radius:10px; padding:10px 16px; font-size:13.5px; font-weight:700; cursor:pointer; }
+.btn-sm{ padding:7px 12px; font-size:12.5px; }
+.chip{ border:1px solid var(--line-strong); border-radius:999px; padding:7px 13px; font-size:13px; background:var(--surface); cursor:pointer; white-space:nowrap; color:var(--ink-2); font-weight:600; transition:.15s; }
+.chip.active{ background:var(--accent-grad); color:var(--on-accent); border-color:transparent; box-shadow:var(--shadow-sm); }
+.chiprow{ display:flex; gap:7px; overflow-x:auto; padding-bottom:11px; scrollbar-width:none; }
+.chiprow::-webkit-scrollbar{ display:none; }
+.card{ border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); padding:15px; margin-bottom:11px; box-shadow:var(--shadow-sm); }
+.toast{ position:fixed; bottom:96px; left:50%; transform:translateX(-50%); background:#EDF2FA; color:#14223F; padding:11px 20px; border-radius:999px; font-size:13px; font-weight:700; z-index:120; box-shadow:var(--shadow-md); white-space:nowrap; }
+.err-box{ background:var(--red-bg); color:var(--red); border:1px solid rgba(240,128,102,.4); border-radius:10px; padding:10px 13px; font-size:13px; margin-bottom:13px; font-weight:600; }
+.empty{ text-align:center; padding:42px 16px; color:var(--ink-3); font-size:14px; }
+.loading-text{ color:var(--ink-3); font-size:14px; text-align:center; padding:36px 0; }
+.bottom-nav{ position:fixed; left:0; right:0; bottom:0; z-index:60; background:rgba(18,30,55,.9); backdrop-filter:saturate(160%) blur(14px); border-top:1px solid var(--line); padding:7px 6px calc(7px + env(safe-area-inset-bottom)); }
+.nav-inner{ display:flex; max-width:560px; margin:0 auto; gap:2px; }
+.nav-item{ flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 2px; border-radius:13px; color:var(--ink-3); font-size:10px; font-weight:700; text-decoration:none; white-space:nowrap; transition:.15s; cursor:pointer; border:none; background:none; font-family:inherit; }
+.nav-item svg{ width:21px; height:21px; }
+.nav-item.active{ color:var(--accent-deep); background:var(--accent-soft); }
+.icon-btn{ width:36px; height:36px; border-radius:10px; border:1px solid var(--line-strong); background:var(--surface); display:grid; place-items:center; color:var(--ink-2); cursor:pointer; flex-shrink:0; }
+.icon-btn svg{ width:18px; height:18px; }
+.appbar-actions{ display:flex; gap:7px; }
+
+/* login */
+.login-hero{ text-align:center; padding:34px 0 14px; }
+.login-hero .biglogo{ width:70px; height:70px; border-radius:21px; margin:0 auto 14px; display:grid; place-items:center; color:var(--on-accent); background:var(--accent-grad); box-shadow:var(--shadow-md); }
+.login-hero .biglogo svg{ width:38px; height:38px; }
+.login-hero .wm{ font-family:"Orbitron","Inter",sans-serif; font-weight:800; font-size:23px; letter-spacing:2.5px; background:var(--metal-grad); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.login-hero .tg{ font-size:12px; color:var(--ink-3); margin-top:8px; letter-spacing:1px; }
+
+/* KPI */
+.kpi-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:9px; margin-bottom:12px; }
+.kpi{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-sm); padding:14px 14px; box-shadow:var(--shadow-sm); }
+.kpi .v{ font-size:25px; font-weight:800; line-height:1; }
+.kpi .l{ font-size:11px; color:var(--ink-2); margin-top:6px; font-weight:600; }
+.kpi.accent .v{ color:var(--accent-deep); }
+.kpi.green .v{ color:var(--green); }
+.kpi.red .v{ color:var(--red); }
+
+/* client list */
+.cl-item{ display:flex; align-items:center; gap:12px; padding:12px 14px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); margin-bottom:8px; box-shadow:var(--shadow-sm); cursor:pointer; transition:.12s; }
+.cl-item:active{ transform:scale(.99); }
+.cl-avatar{ width:42px; height:42px; border-radius:50%; background:var(--accent-soft); color:var(--accent-deep); display:grid; place-items:center; font-weight:800; font-size:16px; flex-shrink:0; }
+.cl-main{ flex:1; min-width:0; }
+.cl-name{ font-size:14.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cl-meta{ font-size:11.5px; color:var(--ink-3); margin-top:2px; }
+.cl-right{ text-align:right; flex-shrink:0; }
+.cl-left-num{ font-size:18px; font-weight:800; color:var(--accent-deep); }
+.cl-left-lbl{ font-size:9.5px; color:var(--ink-3); }
+.badge{ display:inline-block; padding:2px 8px; border-radius:999px; font-size:10px; font-weight:700; }
+.badge.warn{ background:var(--amber-bg); color:var(--amber); }
+.badge.red{ background:var(--red-bg); color:var(--red); }
+.badge.off{ background:rgba(167,182,206,.14); color:var(--ink-2); }
+
+/* detail */
+.back-row{ display:flex; align-items:center; gap:10px; margin:2px 0 12px; }
+.back-btn{ display:inline-flex; align-items:center; gap:6px; color:var(--ink-2); font-size:13px; font-weight:700; cursor:pointer; background:none; border:none; padding:6px 0; font-family:inherit; }
+.back-btn svg{ width:17px; height:17px; }
+.seg{ display:flex; gap:5px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:4px; margin-bottom:13px; box-shadow:var(--shadow-sm); overflow-x:auto; scrollbar-width:none; }
+.seg::-webkit-scrollbar{ display:none; }
+.seg-btn{ flex:1; text-align:center; padding:8px 10px; border-radius:9px; font-size:12.5px; font-weight:700; cursor:pointer; color:var(--ink-2); white-space:nowrap; transition:.15s; }
+.seg-btn.active{ background:var(--accent-grad); color:var(--on-accent); }
+.info-row{ display:flex; justify-content:space-between; gap:10px; padding:9px 0; border-bottom:1px dashed var(--line); font-size:13.5px; }
+.info-row:last-child{ border-bottom:none; }
+.info-row .k{ color:var(--ink-2); }
+.info-row .v{ font-weight:700; text-align:right; }
+.pkg-strip{ display:flex; align-items:center; gap:12px; }
+.pkg-num{ font-size:32px; font-weight:800; color:var(--accent-deep); line-height:1; }
+.pkg-bar{ height:9px; border-radius:999px; background:rgba(242,169,59,.14); overflow:hidden; margin:9px 0 5px; }
+.pkg-fill{ height:100%; background:var(--accent-grad); border-radius:999px; }
+
+/* program editor */
+.day-edit{ border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); margin-bottom:9px; overflow:hidden; box-shadow:var(--shadow-sm); }
+.day-edit-head{ display:flex; align-items:center; gap:9px; padding:11px 14px; cursor:pointer; }
+.day-edit-head .dn{ font-size:13.5px; font-weight:800; flex:1; }
+.day-edit-head .dt{ font-size:11px; color:var(--ink-3); font-weight:600; }
+.type-pill{ padding:3px 9px; border-radius:999px; font-size:10.5px; font-weight:700; background:var(--accent-soft); color:var(--accent-deep); }
+.type-pill.rest{ background:rgba(167,182,206,.14); color:var(--ink-2); }
+.day-edit-body{ padding:12px 14px; border-top:1px solid var(--line); }
+.ex-edit{ display:flex; gap:6px; margin-bottom:7px; align-items:flex-start; }
+.ex-edit .exname{ flex:2; }
+.ex-edit .exnum{ flex:1; min-width:0; }
+.ex-del{ width:34px; flex-shrink:0; border:1px solid var(--line-strong); background:var(--surface-2); color:var(--red); border-radius:9px; cursor:pointer; font-size:16px; display:grid; place-items:center; }
+.add-ex{ display:inline-flex; align-items:center; gap:5px; color:var(--accent-deep); font-weight:700; font-size:12.5px; cursor:pointer; padding:6px 0; background:none; border:none; font-family:inherit; }
+
+/* meals to review */
+.mrev{ border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); padding:13px 14px; margin-bottom:9px; box-shadow:var(--shadow-sm); }
+.mrev-head{ display:flex; align-items:center; gap:8px; margin-bottom:7px; }
+.mrev-name{ font-weight:700; font-size:13.5px; flex:1; }
+.mrev-type{ background:var(--accent-soft); color:var(--accent-deep); padding:2px 9px; border-radius:999px; font-size:10.5px; font-weight:700; }
+.mrev-photo{ margin-top:8px; border-radius:10px; max-width:150px; max-height:150px; object-fit:cover; border:1px solid var(--line-strong); cursor:pointer; display:block; }
+.mrev-existing{ margin-top:8px; background:var(--accent-soft); border-radius:9px; padding:8px 11px; font-size:12px; color:var(--accent-deep); }
+
+/* coupons */
+.ticket{ position:relative; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); box-shadow:var(--shadow-sm); overflow:hidden; margin-bottom:9px; }
+.ticket.dim{ opacity:.6; }
+.ticket-top{ padding:12px 14px; display:flex; gap:11px; align-items:center; }
+.ticket-ic{ width:40px; height:40px; border-radius:11px; display:grid; place-items:center; background:var(--accent-soft); color:var(--accent-deep); flex-shrink:0; }
+.ticket-ic.coffee{ background:rgba(200,140,60,.16); color:#E3B26C; }
+.ticket-ic svg{ width:21px; height:21px; }
+.ticket-title{ font-size:13.5px; font-weight:800; }
+.ticket-sub{ font-size:11px; color:var(--ink-2); margin-top:2px; }
+.code-big{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:15px; font-weight:800; letter-spacing:1.2px; color:var(--accent-deep); }
+.st-chip{ display:inline-block; padding:3px 9px; border-radius:999px; font-size:10px; font-weight:700; }
+.st-active{ background:var(--green-bg); color:var(--green); }
+.st-redeemed{ background:rgba(167,182,206,.14); color:var(--ink-2); }
+.st-expired{ background:var(--red-bg); color:var(--red); }
+
+/* overlay / modal */
+.overlay{ position:fixed; inset:0; background:rgba(4,9,20,.72); z-index:100; display:flex; align-items:center; justify-content:center; padding:18px; backdrop-filter:blur(4px); }
+.panel{ background:var(--surface); border:1px solid var(--line-strong); border-radius:18px; max-width:440px; width:100%; max-height:88vh; overflow:auto; padding:18px; box-shadow:var(--shadow-md); }
+.panel h3{ margin:0 0 14px; font-size:16px; }
+.panel img.full{ width:100%; border-radius:12px; }
+.modal-actions{ display:flex; gap:8px; margin-top:14px; }
+.modal-actions .btn-primary,.modal-actions .btn-ghost{ flex:1; text-align:center; }
+.qr-print{ width:220px; height:220px; margin:14px auto; background:#fff; padding:12px; border-radius:14px; }
+.qr-print img,.qr-print canvas{ width:100% !important; height:100% !important; }
+.toggle{ position:relative; width:46px; height:27px; border-radius:999px; background:var(--line-strong); cursor:pointer; transition:.2s; flex-shrink:0; }
+.toggle.on{ background:var(--accent); }
+.toggle::after{ content:""; position:absolute; top:3px; left:3px; width:21px; height:21px; border-radius:50%; background:#fff; transition:.2s; box-shadow:0 1px 3px rgba(0,0,0,.3); }
+.toggle.on::after{ left:22px; }
+.hint{ font-size:11.5px; color:var(--ink-3); line-height:1.55; }
+.divider{ height:1px; background:var(--line); margin:13px 0; }
+.stack>*{ margin-bottom:9px; }
+
+@media print{
+  body{ background:#fff; color:#000; padding:0; }
+  .appbar,.bottom-nav,.no-print{ display:none !important; }
+  .print-area{ padding:0; }
+}
+</style>
+</head>
+<body id="bodyEl">
+
+<div class="appbar">
+  <div class="appbar-inner">
+    <div class="brand">
+      <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M4 8.5v7M17.5 6.5v11M20 8.5v7M6.5 12h11"/></svg></div>
+      <div><div class="wordmark">FIT GRAVITY</div><div class="brand-tag">โหมดโค้ช</div></div>
+    </div>
+    <div class="appbar-actions" id="appbarActions"></div>
+  </div>
+</div>
+
+<div class="wrap" id="app">
+  <div id="errorBox"></div>
+  <div id="content"><div class="loading-text">กำลังโหลด...</div></div>
+</div>
+
+<nav class="bottom-nav" id="bottomNav" style="display:none">
+  <div class="nav-inner">
+    <button class="nav-item" id="nav-home" onclick="setTab('home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><rect x="5" y="11" width="3" height="7" rx="1"/><rect x="10.5" y="6" width="3" height="12" rx="1"/><rect x="16" y="13.5" width="3" height="4.5" rx="1"/></svg>แดชบอร์ด</button>
+    <button class="nav-item" id="nav-clients" onclick="setTab('clients')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c.6-3.2 3-5 5.5-5s4.9 1.8 5.5 5"/><path d="M16 7.5a3 3 0 0 1 0 5.6M18.5 20c-.3-2-1.2-3.4-2.5-4.3"/></svg>ลูกค้า</button>
+    <button class="nav-item" id="nav-meals" onclick="setTab('meals')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v7a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V3M7 3v18"/><path d="M19 3c-2 1.5-3 4-3 7v2h3v9"/></svg>อาหาร</button>
+    <button class="nav-item" id="nav-coupons" onclick="setTab('coupons')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-6Z"/><path d="M13 5v2M13 11v2M13 17v2"/></svg>คูปอง</button>
+    <button class="nav-item" id="nav-settings" onclick="setTab('settings')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 6.8 19l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1-2.7H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 6.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 2.7-1H10a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1 2.7h.1a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.2 1Z"/></svg>ตั้งค่า</button>
+  </div>
+</nav>
+
+<script>
+var API_URL = "https://script.google.com/macros/s/AKfycbwQHtq7-3Ry1i7cVgblmIOnaLZSpfsKpZjpgiutP37ze_NP0Jn9TJ6pwXegwzt-t5yt/exec";
+var DAY_LABELS = { 1:"จันทร์",2:"อังคาร",3:"พุธ",4:"พฤหัสบดี",5:"ศุกร์",6:"เสาร์",7:"อาทิตย์" };
+var TYPE_LABEL = { cardio:"คาดิโอ", weights:"เวทเทรนนิ่ง", mix:"คาดิโอ+เวท", rest:"วันพัก" };
+var GOALS = ["ลดน้ำหนัก","ลดไขมัน กระชับ","เพิ่มกล้ามเนื้อ","สุขภาพทั่วไป","เพิ่มความฟิต"];
+var THAI_MONTHS = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+
+/* โปรแกรมสำเร็จรูป (เทมเพลต) */
+var TEMPLATES = {
+  weightloss:{ name:"ลดน้ำหนัก (คาดิโอเน้น)", days:[
+    {day:1,type:"mix",title:"เวทเต็มตัว + คาดิโอ",items:[{name:"สควอท",sets:3,reps:"15 ครั้ง",rest:"60 วิ"},{name:"วิดพื้น (เข่าได้)",sets:3,reps:"12 ครั้ง",rest:"60 วิ"},{name:"เดินเร็ว/วิ่งเบา",sets:1,reps:"20 นาที",rest:"-"}]},
+    {day:2,type:"cardio",title:"คาดิโอเผาผลาญ",items:[{name:"HIIT (เร็ว 30/พัก 30)",sets:8,reps:"รอบ",rest:"-"},{name:"เดินคูลดาวน์",sets:1,reps:"10 นาที",rest:"-"}]},
+    {day:3,type:"rest",title:"วันพัก",items:[]},
+    {day:4,type:"mix",title:"ล่าง+ แกนกลาง",items:[{name:"ลันจ์",sets:3,reps:"12/ข้าง",rest:"60 วิ"},{name:"กลูตบริดจ์",sets:3,reps:"15 ครั้ง",rest:"45 วิ"},{name:"แพลงก์",sets:3,reps:"40 วิ",rest:"30 วิ"}]},
+    {day:5,type:"cardio",title:"คาดิโอยาว",items:[{name:"ปั่น/เดินชัน",sets:1,reps:"35 นาที",rest:"-"}]},
+    {day:6,type:"weights",title:"บน + คอร์",items:[{name:"ดัมเบลโรว์",sets:3,reps:"12 ครั้ง",rest:"60 วิ"},{name:"ไหล่กดดัมเบล",sets:3,reps:"12 ครั้ง",rest:"60 วิ"},{name:"ครันช์",sets:3,reps:"20 ครั้ง",rest:"30 วิ"}]},
+    {day:7,type:"rest",title:"วันพัก / เดินเบา ๆ",items:[]}
+  ]},
+  cardio:{ name:"คาดิโอ ฟิตหัวใจ", days:[
+    {day:1,type:"cardio",title:"วิ่ง Interval",items:[{name:"วอร์มอัพเดินเร็ว",sets:1,reps:"5 นาที",rest:"-"},{name:"วิ่ง 2 นาที/เดิน 1 นาที",sets:6,reps:"รอบ",rest:"-"}]},
+    {day:2,type:"cardio",title:"Steady State",items:[{name:"ปั่นจักรยาน",sets:1,reps:"40 นาที",rest:"-"}]},
+    {day:3,type:"rest",title:"วันพัก",items:[]},
+    {day:4,type:"cardio",title:"HIIT",items:[{name:"Burpee",sets:4,reps:"10 ครั้ง",rest:"40 วิ"},{name:"Mountain climber",sets:4,reps:"30 วิ",rest:"30 วิ"},{name:"Jumping jack",sets:4,reps:"40 วิ",rest:"30 วิ"}]},
+    {day:5,type:"cardio",title:"ว่ายน้ำ / ปั่น",items:[{name:"คาดิโอที่ชอบ",sets:1,reps:"30 นาที",rest:"-"}]},
+    {day:6,type:"mix",title:"คาดิโอ+บอดี้เวท",items:[{name:"สควอทจัมพ์",sets:3,reps:"15 ครั้ง",rest:"45 วิ"},{name:"วิ่งเบา",sets:1,reps:"20 นาที",rest:"-"}]},
+    {day:7,type:"rest",title:"วันพัก",items:[]}
+  ]},
+  strength:{ name:"เวทเทรนนิ่ง สร้างกล้าม (Push/Pull/Legs)", days:[
+    {day:1,type:"weights",title:"Push (อก ไหล่ ไตรเซ็ป)",items:[{name:"เบนช์เพรส/อกดัมเบล",sets:4,reps:"8-10",rest:"90 วิ"},{name:"ไหล่กด",sets:3,reps:"10-12",rest:"75 วิ"},{name:"ไตรเซ็ปกดเชือก",sets:3,reps:"12-15",rest:"60 วิ"}]},
+    {day:2,type:"weights",title:"Pull (หลัง ไบเซ็ป)",items:[{name:"ดึงข้อ/แลตพูลดาวน์",sets:4,reps:"8-10",rest:"90 วิ"},{name:"บาร์เบลโรว์",sets:3,reps:"10-12",rest:"75 วิ"},{name:"ดัมเบลไบเซ็ปเคิร์ล",sets:3,reps:"12",rest:"60 วิ"}]},
+    {day:3,type:"rest",title:"วันพัก",items:[]},
+    {day:4,type:"weights",title:"Legs (ขา สะโพก)",items:[{name:"สควอท",sets:4,reps:"8-10",rest:"120 วิ"},{name:"เดดลิฟต์โรมาเนียน",sets:3,reps:"10",rest:"90 วิ"},{name:"เลกเพรส",sets:3,reps:"12-15",rest:"75 วิ"}]},
+    {day:5,type:"weights",title:"Push #2",items:[{name:"อกเอียงดัมเบล",sets:4,reps:"10",rest:"75 วิ"},{name:"ไหล่ข้าง (Lateral raise)",sets:3,reps:"15",rest:"45 วิ"},{name:"ดิพ",sets:3,reps:"10-12",rest:"60 วิ"}]},
+    {day:6,type:"weights",title:"Pull #2 + คอร์",items:[{name:"ซีทโรว์",sets:4,reps:"10-12",rest:"75 วิ"},{name:"เฟซพูล",sets:3,reps:"15",rest:"45 วิ"},{name:"แฮงกิ้งเลกเรส",sets:3,reps:"12",rest:"45 วิ"}]},
+    {day:7,type:"rest",title:"วันพัก",items:[]}
+  ]},
+  blank:{ name:"เริ่มจากว่าง", days:[1,2,3,4,5,6,7].map(function(d){ return {day:d,type:d===7?"rest":"weights",title:"",items:[]}; }) }
+};
+
+var state = {
+  view:"boot",              // boot | login | home
+  tab:"home",               // home | clients | meals | coupons | settings
+  pin:null,
+  data:null,                // adminGetAll bundle
+  detail:null,              // adminGetClient bundle
+  detailTab:"info",         // info | program | weight | meals | coupons
+  editDays:null,            // program editor working copy
+  clientQuery:"",
+  busy:false, loginErr:""
+};
+
+var store = {
+  get:function(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+  set:function(k,v){ try{ localStorage.setItem(k,v); }catch(e){} },
+  del:function(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+function escapeHtml(s){ var d=document.createElement("div"); d.textContent=s==null?"":s; return d.innerHTML; }
+function escapeJs(s){ return String(s==null?"":s).replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/"/g,"&quot;").replace(/\n/g," "); }
+function showToast(msg){ var t=document.createElement("div"); t.className="toast"; t.textContent=msg; document.body.appendChild(t); setTimeout(function(){ t.remove(); },2400); }
+function todayISO(){ var x=new Date(); return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0"); }
+function fmtDate(ds){ if(!ds) return "-"; var p=String(ds).slice(0,10).split("-"); if(p.length<3) return escapeHtml(ds); return Number(p[2])+" "+THAI_MONTHS[Number(p[1])-1]; }
+function fmtDateY(ds){ if(!ds) return "-"; var p=String(ds).slice(0,10).split("-"); if(p.length<3) return escapeHtml(ds); return Number(p[2])+" "+THAI_MONTHS[Number(p[1])-1]+" "+String(Number(p[0])+543).slice(-2); }
+function fmtDT(s){ if(!s) return ""; var str=String(s); return fmtDate(str.slice(0,10))+" "+str.slice(11,16); }
+function num1(v){ var n=Number(v); return isNaN(n)?"-":(Math.round(n*10)/10).toLocaleString("th-TH"); }
+function initials(n){ n=String(n||"").trim(); return n?n.charAt(0):"?"; }
+
+async function apiCall(action, payload){
+  var res;
+  try{
+    var body=new URLSearchParams({ action:action });
+    if (payload) body.set("payload", JSON.stringify(payload));
+    res=await fetch(API_URL,{ method:"POST", redirect:"follow", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:body.toString() });
+  }catch(e){ throw new Error("เชื่อมต่อเครือข่ายไม่ได้"); }
+  var text=await res.text();
+  if (!res.ok) throw new Error("HTTP "+res.status);
+  var data;
+  try{ data=JSON.parse(text); }catch(e){ throw new Error("ข้อมูลจากเซิร์ฟเวอร์ไม่ถูกต้อง"); }
+  if (data && data.error) throw new Error(data.error);
+  return data;
+}
+function withPin(p){ return Object.assign({ trainerPin:state.pin }, p||{}); }
+function redeemUrl(code){ try{ return new URL("fit-coupon.html?code="+encodeURIComponent(code), location.href).href; }catch(e){ return String(code); } }
+function renderQR(el, text, size){
+  el.innerHTML="";
+  if (typeof QRCode==="undefined"){ el.innerHTML='<div style="font-size:9px;word-break:break-all;color:#333">'+escapeHtml(text)+'</div>'; return; }
+  new QRCode(el, { text:text, width:size||192, height:size||192, colorDark:"#14223F", colorLight:"#FFFFFF", correctLevel:QRCode.CorrectLevel.M });
+}
+function paintQRs(){ document.querySelectorAll("[data-qr]").forEach(function(el){ if(el.dataset.qrdone) return; renderQR(el, el.dataset.qr, Number(el.dataset.qrsize||192)); el.dataset.qrdone="1"; }); }
+
+/* ---------- boot & auth ---------- */
+async function boot(){
+  var saved = store.get("fg_admin_pin");
+  if (saved){
+    state.pin = saved;
+    try{ state.data = await apiCall("adminGetAll", withPin()); state.view="home"; }
+    catch(e){ state.pin=null; store.del("fg_admin_pin"); state.view="login"; }
+  } else state.view="login";
+  render();
+}
+async function doLogin(){
+  var pin=document.getElementById("pinInput").value.trim();
+  if(!pin){ state.loginErr="กรุณากรอก PIN"; render(); return; }
+  state.busy=true; state.loginErr=""; render();
+  try{
+    state.pin=pin;
+    state.data = await apiCall("adminGetAll", withPin());
+    store.set("fg_admin_pin", pin);
+    state.view="home"; state.tab="home";
+  }catch(e){ state.loginErr=e.message; state.pin=null; }
+  state.busy=false; render();
+}
+function doLogout(){ store.del("fg_admin_pin"); state.pin=null; state.data=null; state.detail=null; state.view="login"; render(); }
+async function reload(quiet){
+  try{ state.data=await apiCall("adminGetAll", withPin()); document.getElementById("errorBox").innerHTML=""; if(!quiet) showToast("อัปเดตแล้ว"); }
+  catch(e){ document.getElementById("errorBox").innerHTML='<div class="err-box">'+escapeHtml(e.message)+'</div>'; }
+  render();
+}
+function setTab(t){ state.tab=t; state.detail=null; render(); window.scrollTo(0,0); }
+
+/* ---------- client detail ---------- */
+async function openClient(id){
+  state.busy=true; render();
+  try{ state.detail=await apiCall("adminGetClient", withPin({ clientId:id })); state.detailTab="info"; state.editDays=null; }
+  catch(e){ showToast(e.message); }
+  state.busy=false; render(); window.scrollTo(0,0);
+}
+function closeDetail(){ state.detail=null; render(); window.scrollTo(0,0); }
+function setDetailTab(t){ state.detailTab=t; if(t==="program") ensureEditDays(); render(); window.scrollTo(0,0); }
+
+/* ---------- render root ---------- */
+function render(){
+  var c=document.getElementById("content");
+  var nav=document.getElementById("bottomNav");
+  var actions=document.getElementById("appbarActions");
+  nav.style.display = (state.view==="home" && !state.detail) ? "block" : "none";
+  actions.innerHTML = state.view==="home"
+    ? '<button class="icon-btn" onclick="reload()" title="รีเฟรช"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg></button>'+
+      '<button class="icon-btn" onclick="doLogout()" title="ออก"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg></button>'
+    : "";
+  if (state.view==="boot"){ c.innerHTML='<div class="loading-text">กำลังโหลด...</div>'; return; }
+  if (state.view==="login"){ c.innerHTML=renderLogin(); return; }
+  if (state.detail){ c.innerHTML=renderDetail(); paintQRs(); return; }
+  ["home","clients","meals","coupons","settings"].forEach(function(t){ var el=document.getElementById("nav-"+t); if(el) el.classList.toggle("active", state.tab===t); });
+  var html="";
+  if (state.tab==="home") html=renderHome();
+  else if (state.tab==="clients") html=renderClients();
+  else if (state.tab==="meals") html=renderMealsReview();
+  else if (state.tab==="coupons") html=renderCouponsTab();
+  else html=renderSettings();
+  c.innerHTML=html;
+  paintQRs();
+}
+
+function renderLogin(){
+  return '<div class="login-hero">'+
+    '<div class="biglogo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M4 8.5v7M17.5 6.5v11M20 8.5v7M6.5 12h11"/></svg></div>'+
+    '<div class="wm">FIT GRAVITY</div><div class="tg">โหมดโค้ช · เฉพาะเทรนเนอร์</div></div>'+
+    '<div class="card">'+
+    (state.loginErr?'<div class="err-box">'+escapeHtml(state.loginErr)+'</div>':"")+
+    '<div class="field"><label class="label">PIN เทรนเนอร์</label><input id="pinInput" type="password" inputmode="numeric" placeholder="••••" onkeydown="if(event.key===\'Enter\')doLogin()"></div>'+
+    '<button class="btn-primary btn-block" onclick="doLogin()" '+(state.busy?"disabled":"")+'>'+(state.busy?"กำลังเข้า...":"เข้าสู่ระบบ")+'</button>'+
+    '<p class="hint" style="margin-top:11px;text-align:center">PIN เริ่มต้น 8888 — เปลี่ยนได้ที่ชีท Settings หรือแท็บตั้งค่า</p></div>';
+}
+
+/* ---------- HOME / dashboard ---------- */
+function renderHome(){
+  var d=state.data||{}, k=d.kpi||{}, promo=d.promo||{};
+  var pending=d.mealsPending||[];
+  var html='<h1>แดชบอร์ด</h1><p class="sub">ภาพรวมลูกค้าและกิจกรรมของคุณ</p>'+
+    '<div class="kpi-grid">'+
+    '<div class="kpi accent"><div class="v">'+(k.activeClients||0)+'</div><div class="l">ลูกค้าที่ใช้งาน</div></div>'+
+    '<div class="kpi"><div class="v">'+(k.sessionsThisMonth||0)+'</div><div class="l">เซสชันเดือนนี้</div></div>'+
+    '<div class="kpi '+(pending.length?"red":"")+'"><div class="v">'+(k.mealsPending||0)+'</div><div class="l">อาหารรอคอมเมนต์</div></div>'+
+    '<div class="kpi green"><div class="v">'+(k.couponsRedeemedThisMonth||0)+'</div><div class="l">คูปองใช้เดือนนี้</div></div>'+
+    '</div>';
+  // quick action
+  html+='<div class="card" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
+    '<button class="btn-primary btn-sm" onclick="openAddClient()">+ เพิ่มลูกค้า</button>'+
+    '<button class="btn-ghost btn-sm" onclick="setTab(\'meals\')">รีวิวอาหาร'+(pending.length?" ("+pending.length+")":"")+'</button>'+
+    '<button class="btn-ghost btn-sm" onclick="setTab(\'coupons\')">ออกคูปอง</button></div>';
+  // promo status
+  html+='<h2>โปรโมชันลูกค้าร้านกาแฟ</h2><div class="card">'+
+    '<div style="display:flex;align-items:center;gap:10px">'+
+    '<div style="flex:1"><div style="font-weight:700;font-size:14px">'+escapeHtml(promo.title||"-")+'</div>'+
+    '<div class="hint" style="margin-top:3px">'+(promo.enabled?'<span style="color:var(--green);font-weight:700">● เปิดรับสิทธิ์อยู่</span>':'<span style="color:var(--ink-3)">● ปิดรับสิทธิ์</span>')+' · อายุคูปอง '+escapeHtml(String(promo.days||30))+' วัน</div></div>'+
+    '<button class="btn-ghost btn-sm" onclick="setTab(\'settings\')">จัดการ</button></div></div>';
+  // recent pending meals preview
+  if (pending.length){
+    html+='<h2>อาหารล่าสุดที่รอคอมเมนต์</h2>';
+    pending.slice(0,3).forEach(function(m){
+      var cl=(d.clients||[]).filter(function(x){ return String(x.clientId)===String(m.clientId); })[0];
+      html+='<div class="mrev" onclick="setTab(\'meals\')" style="cursor:pointer">'+
+        '<div class="mrev-head"><span class="mrev-name">'+escapeHtml(cl?cl.name:"ลูกค้า")+'</span>'+
+        '<span class="mrev-type">'+escapeHtml(m.mealType||"มื้อ")+'</span><span class="hint">'+fmtDate(m.date)+'</span></div>'+
+        (m.text?'<div style="font-size:13px">'+escapeHtml(m.text)+'</div>':"")+'</div>';
+    });
+  }
+  return html;
+}
+
+/* ---------- CLIENTS ---------- */
+function renderClients(){
+  var d=state.data||{}, clients=(d.clients||[]).slice();
+  var q=state.clientQuery.trim().toLowerCase();
+  if(q) clients=clients.filter(function(c){ return String(c.name||"").toLowerCase().indexOf(q)>=0 || String(c.phone||"").indexOf(q)>=0; });
+  clients.sort(function(a,b){ return String(a.name||"").localeCompare(String(b.name||""),"th"); });
+  var html='<div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><h1>ลูกค้า</h1>'+
+    '<button class="btn-primary btn-sm" onclick="openAddClient()">+ เพิ่ม</button></div>'+
+    '<div class="field" style="margin:8px 0 14px"><input placeholder="ค้นหาชื่อหรือเบอร์โทร" value="'+escapeHtml(state.clientQuery)+'" oninput="state.clientQuery=this.value;debounceClients()"></div>';
+  if(!clients.length){ html+='<div class="empty">'+(q?"ไม่พบลูกค้าที่ค้นหา":"ยังไม่มีลูกค้า แตะ + เพื่อเพิ่ม")+'</div>'; return html; }
+  var lw=d.lastWeight||{};
+  clients.forEach(function(c){
+    var left=Number(c.sessionsLeft||0);
+    var badges="";
+    if(c.status==="inactive") badges+='<span class="badge off">ปิดใช้งาน</span> ';
+    else if(left===0 && Number(c.sessionsTotal)>0) badges+='<span class="badge red">แพ็กหมด</span> ';
+    else if(left<=2 && Number(c.sessionsTotal)>0) badges+='<span class="badge warn">เหลือ '+left+'</span> ';
+    var w=lw[String(c.clientId)];
+    html+='<div class="cl-item" onclick="openClient(\''+escapeJs(c.clientId)+'\')">'+
+      '<div class="cl-avatar">'+escapeHtml(initials(c.name))+'</div>'+
+      '<div class="cl-main"><div class="cl-name">'+escapeHtml(c.name)+'</div>'+
+      '<div class="cl-meta">'+badges+escapeHtml(c.goal||"")+(w?' · '+num1(w)+' กก.':"")+'</div></div>'+
+      '<div class="cl-right"><div class="cl-left-num">'+(Number(c.sessionsTotal)>0?left:"–")+'</div><div class="cl-left-lbl">ครั้งเหลือ</div></div></div>';
+  });
+  return html;
+}
+var _clTimer=null;
+function debounceClients(){ if(_clTimer) clearTimeout(_clTimer); _clTimer=setTimeout(function(){ render(); var i=document.querySelector('input[placeholder="ค้นหาชื่อหรือเบอร์โทร"]'); if(i){ i.focus(); i.setSelectionRange(i.value.length,i.value.length);} },250); }
+
+/* ---------- CLIENT DETAIL ---------- */
+function renderDetail(){
+  var b=state.detail||{}, c=b.client||{};
+  var html='<div class="back-row"><button class="back-btn" onclick="closeDetail()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>ลูกค้าทั้งหมด</button></div>'+
+    '<div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">'+
+    '<div class="cl-avatar" style="width:48px;height:48px;font-size:18px">'+escapeHtml(initials(c.name))+'</div>'+
+    '<div><h1 style="margin:0">'+escapeHtml(c.name)+'</h1><div class="hint">'+escapeHtml(c.phone)+' · '+escapeHtml(c.goal||"")+'</div></div></div>';
+  html+='<div class="seg">'+
+    seg("info","ข้อมูล")+seg("program","โปรแกรม")+seg("weight","น้ำหนัก")+seg("meals","อาหาร")+seg("coupons","คูปอง")+'</div>';
+  if (state.detailTab==="info") html+=renderDetailInfo(b);
+  else if (state.detailTab==="program") html+=renderDetailProgram(b);
+  else if (state.detailTab==="weight") html+=renderDetailWeight(b);
+  else if (state.detailTab==="meals") html+=renderDetailMeals(b);
+  else html+=renderDetailCoupons(b);
+  return html;
+}
+function seg(id,label){ return '<div class="seg-btn'+(state.detailTab===id?" active":"")+'" onclick="setDetailTab(\''+id+'\')">'+label+'</div>'; }
+
+function renderDetailInfo(b){
+  var c=b.client||{};
+  var total=Number(c.sessionsTotal||0), used=Number(c.sessionsUsed||0), left=Math.max(0,total-used);
+  var pct=total>0?Math.min(100,Math.round(used/total*100)):0;
+  var html='';
+  if(total>0){
+    html+='<div class="card"><div class="pkg-strip"><div class="pkg-num">'+left+'</div>'+
+      '<div style="flex:1"><div style="font-weight:700">'+escapeHtml(c.packageName||"แพ็กเกจเทรน")+'</div>'+
+      '<div class="pkg-bar"><div class="pkg-fill" style="width:'+pct+'%"></div></div>'+
+      '<div class="hint">ใช้ไป '+used+'/'+total+' ครั้ง'+(c.packageExpiry?' · หมดอายุ '+fmtDateY(c.packageExpiry):"")+'</div></div></div>'+
+      '<div class="row" style="margin-top:12px;margin-bottom:0"><button class="btn-primary" style="flex:1" onclick="useSession(\''+escapeJs(c.clientId)+'\')" '+(left<=0||state.busy?"disabled":"")+'>✓ ตัด 1 ครั้ง (เทรนวันนี้)</button></div></div>';
+  } else {
+    html+='<div class="card"><p class="hint" style="margin:0">ยังไม่ได้ตั้งแพ็กเกจ — กดแก้ไขด้านล่างเพื่อเพิ่มจำนวนครั้ง</p></div>';
+  }
+  html+='<div class="card">'+
+    '<div class="info-row"><span class="k">เบอร์โทร</span><span class="v">'+escapeHtml(c.phone)+'</span></div>'+
+    '<div class="info-row"><span class="k">PIN เข้าแอป</span><span class="v">'+escapeHtml(c.pin||"—")+'</span></div>'+
+    '<div class="info-row"><span class="k">เป้าหมาย</span><span class="v">'+escapeHtml(c.goal||"-")+'</span></div>'+
+    '<div class="info-row"><span class="k">น้ำหนักเริ่ม → เป้า</span><span class="v">'+(c.startWeight?num1(c.startWeight):"-")+' → '+(c.targetWeight?num1(c.targetWeight):"-")+' กก.</span></div>'+
+    '<div class="info-row"><span class="k">สถานะ</span><span class="v">'+(c.status==="inactive"?'<span style="color:var(--red)">ปิดใช้งาน</span>':'<span style="color:var(--green)">ใช้งาน</span>')+'</span></div>'+
+    (c.note?'<div class="info-row"><span class="k">โน้ต</span><span class="v">'+escapeHtml(c.note)+'</span></div>':"")+
+    '</div>';
+  html+='<div class="row"><button class="btn-ghost" style="flex:1" onclick="openEditClient()">แก้ไขข้อมูล/แพ็กเกจ</button>'+
+    '<button class="btn-ghost" style="flex:1" onclick="openIssueCoupon(\''+escapeJs(c.clientId)+'\')">ออกคูปอง</button></div>';
+  return html;
+}
+
+/* ----- program editor ----- */
+function ensureEditDays(){
+  if(state.editDays) return;
+  var prog=(state.detail&&state.detail.program)||[];
+  var byDay={}; prog.forEach(function(p){ byDay[p.day]=p; });
+  state.editDays=[1,2,3,4,5,6,7].map(function(d){
+    var p=byDay[d]||{};
+    return { day:d, type:p.type||(d===7?"rest":"weights"), title:p.title||"",
+      items:(p.items||[]).map(function(it){ return {name:it.name||"",sets:it.sets||"",reps:it.reps||"",rest:it.rest||""}; }),
+      note:p.note||"", open:false };
+  });
+}
+function renderDetailProgram(b){
+  ensureEditDays();
+  var html='<div class="card no-print"><div style="font-size:12.5px;font-weight:700;margin-bottom:8px">เริ่มจากเทมเพลตสำเร็จรูป</div>'+
+    '<div class="chiprow" style="padding-bottom:2px">';
+  Object.keys(TEMPLATES).forEach(function(key){
+    html+='<span class="chip" onclick="applyTemplate(\''+key+'\')">'+escapeHtml(TEMPLATES[key].name)+'</span>';
+  });
+  html+='</div><p class="hint" style="margin:6px 0 0">แตะเทมเพลตเพื่อเติมทั้ง 7 วัน แล้วปรับแก้ได้ตามต้องการ</p></div>';
+  state.editDays.forEach(function(dd,idx){
+    html+='<div class="day-edit">'+
+      '<div class="day-edit-head" onclick="toggleEditDay('+idx+')">'+
+      '<div class="dn">'+DAY_LABELS[dd.day]+' <span class="dt">'+(dd.title?escapeHtml(dd.title):(dd.items.length?dd.items.length+" ท่า":"ยังว่าง"))+'</span></div>'+
+      '<span class="type-pill'+(dd.type==="rest"?" rest":"")+'">'+TYPE_LABEL[dd.type]+'</span></div>';
+    if(dd.open){
+      html+='<div class="day-edit-body">'+
+        '<div class="row"><div style="flex:1"><label class="label">ประเภท</label>'+
+        '<select onchange="setDayType('+idx+',this.value)">'+
+        ["cardio","weights","mix","rest"].map(function(t){ return '<option value="'+t+'"'+(dd.type===t?" selected":"")+'>'+TYPE_LABEL[t]+'</option>'; }).join("")+
+        '</select></div><div style="flex:1.4"><label class="label">ชื่อวัน</label>'+
+        '<input value="'+escapeHtml(dd.title)+'" oninput="setDayField('+idx+',\'title\',this.value)" placeholder="เช่น ขา + คอร์"></div></div>';
+      if(dd.type!=="rest"){
+        html+='<label class="label">ท่าออกกำลัง</label>';
+        dd.items.forEach(function(it,j){
+          html+='<div class="ex-edit">'+
+            '<input class="exname" value="'+escapeHtml(it.name)+'" oninput="setEx('+idx+','+j+',\'name\',this.value)" placeholder="ชื่อท่า">'+
+            '<input class="exnum" value="'+escapeHtml(it.sets)+'" oninput="setEx('+idx+','+j+',\'sets\',this.value)" placeholder="เซ็ต">'+
+            '<input class="exnum" value="'+escapeHtml(it.reps)+'" oninput="setEx('+idx+','+j+',\'reps\',this.value)" placeholder="ครั้ง/เวลา">'+
+            '<button class="ex-del" onclick="delEx('+idx+','+j+')">×</button></div>';
+        });
+        html+='<button class="add-ex" onclick="addEx('+idx+')">+ เพิ่มท่า</button>';
+      }
+      html+='<div class="field" style="margin-top:10px"><label class="label">โน้ตถึงลูกค้า (ไม่ใส่ก็ได้)</label>'+
+        '<input value="'+escapeHtml(dd.note)+'" oninput="setDayField('+idx+',\'note\',this.value)" placeholder="เช่น วอร์มอัพ 5 นาทีก่อนเริ่ม"></div>'+
+        '</div>';
+    }
+    html+='</div>';
+  });
+  html+='<button class="btn-primary btn-block no-print" onclick="saveProgram()" '+(state.busy?"disabled":"")+' style="margin-top:6px">'+(state.busy?"กำลังบันทึก...":"บันทึกโปรแกรมทั้งสัปดาห์")+'</button>';
+  return html;
+}
+function toggleEditDay(i){ state.editDays[i].open=!state.editDays[i].open; render(); }
+function setDayType(i,v){ state.editDays[i].type=v; if(v==="rest") state.editDays[i].items=[]; render(); }
+function setDayField(i,f,v){ state.editDays[i][f]=v; }
+function setEx(i,j,f,v){ state.editDays[i].items[j][f]=v; }
+function addEx(i){ state.editDays[i].items.push({name:"",sets:"",reps:"",rest:""}); render(); }
+function delEx(i,j){ state.editDays[i].items.splice(j,1); render(); }
+function applyTemplate(key){
+  var t=TEMPLATES[key]; if(!t) return;
+  state.editDays=t.days.map(function(p){
+    return { day:p.day, type:p.type, title:p.title, note:p.note||"", open:false,
+      items:(p.items||[]).map(function(it){ return {name:it.name,sets:it.sets||"",reps:it.reps||"",rest:it.rest||""}; }) };
+  });
+  showToast("ใส่เทมเพลต "+t.name+" แล้ว — ปรับแก้แล้วกดบันทึก");
+  render();
+}
+async function saveProgram(){
+  var days=state.editDays.map(function(dd){
+    return { day:dd.day, dayLabel:DAY_LABELS[dd.day], type:dd.type, title:dd.title,
+      note:dd.note, items:(dd.type==="rest"?[]:dd.items.filter(function(it){ return String(it.name||"").trim(); })) };
+  });
+  state.busy=true; render();
+  try{
+    state.detail=await apiCall("adminSaveProgram", withPin({ clientId:state.detail.client.clientId, days:days }));
+    state.editDays=null; showToast("บันทึกโปรแกรมแล้ว");
+  }catch(e){ showToast(e.message); }
+  state.busy=false; render();
+}
+
+function renderDetailWeight(b){
+  var ws=b.weights||[], c=b.client||{};
+  var html='';
+  if(ws.length>=2){
+    html+='<div class="card">'+buildMiniChart(ws, Number(c.targetWeight)||null)+'</div>';
+  }
+  if(!ws.length){ html+='<div class="empty">ลูกค้ายังไม่บันทึกน้ำหนัก</div>'; return html; }
+  html+='<div class="card">';
+  ws.slice().reverse().slice(0,20).forEach(function(w,i,arr){
+    var prev=arr[i+1]; var df=prev?w.weight-prev.weight:null;
+    html+='<div class="info-row"><span class="k">'+fmtDateY(w.date)+(w.note?' · '+escapeHtml(w.note):"")+'</span>'+
+      '<span class="v">'+num1(w.weight)+' กก. '+(df==null?"":'<small style="color:'+(df<=0?"var(--green)":"var(--red)")+'">('+(df>0?"+":"")+num1(df)+')</small>')+'</span></div>';
+  });
+  html+='</div>';
+  return html;
+}
+function buildMiniChart(ws, target){
+  var W=340,H=150,L=32,R=12,T=12,B=20;
+  var data=ws.slice(-40);
+  var xs=data.map(function(w){ return new Date(w.date+"T00:00:00").getTime(); });
+  var ys=data.map(function(w){ return w.weight; });
+  var minX=Math.min.apply(null,xs), maxX=Math.max.apply(null,xs); if(maxX===minX) maxX=minX+86400000;
+  var lo=Math.min.apply(null,ys), hi=Math.max.apply(null,ys);
+  if(target){ lo=Math.min(lo,target); hi=Math.max(hi,target); }
+  var pad=Math.max(0.6,(hi-lo)*0.12); lo-=pad; hi+=pad;
+  function X(t){ return L+(t-minX)/(maxX-minX)*(W-L-R); }
+  function Y(v){ return T+(hi-v)/(hi-lo)*(H-T-B); }
+  var grid="";
+  for(var i=0;i<=3;i++){ var yv=lo+(hi-lo)*i/3, y=Y(yv);
+    grid+='<line x1="'+L+'" y1="'+y+'" x2="'+(W-R)+'" y2="'+y+'" stroke="#28395C" stroke-width="1"/>'+
+      '<text x="'+(L-5)+'" y="'+(y+3)+'" font-size="8.5" fill="#8CA0BF" text-anchor="end">'+(Math.round(yv*10)/10)+'</text>'; }
+  var pts=data.map(function(w,i){ return {x:X(xs[i]),y:Y(ys[i])}; });
+  var path=pts.map(function(p,i){ return (i===0?"M":"L")+p.x.toFixed(1)+" "+p.y.toFixed(1); }).join(" ");
+  var tl=""; if(target){ var ty=Y(target); tl='<line x1="'+L+'" y1="'+ty+'" x2="'+(W-R)+'" y2="'+ty+'" stroke="#8CA0BF" stroke-width="1.3" stroke-dasharray="5 4"/>'; }
+  var last=pts[pts.length-1];
+  return '<div style="font-size:12.5px;font-weight:700;margin-bottom:6px">แนวโน้มน้ำหนัก (กก.)</div>'+
+    '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto"><defs><linearGradient id="mg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E9A63A" stop-opacity="0.16"/><stop offset="1" stop-color="#E9A63A" stop-opacity="0"/></linearGradient></defs>'+
+    grid+tl+'<path d="'+path+' L'+last.x.toFixed(1)+' '+(H-B)+' L'+pts[0].x.toFixed(1)+' '+(H-B)+' Z" fill="url(#mg)"/>'+
+    '<path d="'+path+'" fill="none" stroke="#E9A63A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'+
+    '<circle cx="'+last.x+'" cy="'+last.y+'" r="3.4" fill="#E9A63A" stroke="#14223F" stroke-width="2"/></svg>';
+}
+
+function renderDetailMeals(b){
+  var meals=b.meals||[];
+  if(!meals.length) return '<div class="empty">ลูกค้ายังไม่บันทึกอาหาร</div>';
+  var html='';
+  meals.forEach(function(m){
+    html+='<div class="mrev"><div class="mrev-head"><span class="mrev-name">'+escapeHtml(m.mealType||"มื้อ")+'</span>'+
+      '<span class="hint">'+fmtDT(m.createdAt)+'</span></div>'+
+      (m.text?'<div style="font-size:13px">'+escapeHtml(m.text)+'</div>':"")+
+      (m.photoUrl?'<img class="mrev-photo" loading="lazy" src="'+escapeHtml(m.photoUrl)+'" onclick="openPhoto(\''+escapeJs(m.photoUrl)+'\')">':"")+
+      (m.trainerComment?'<div class="mrev-existing"><b>คอมเมนต์: </b>'+escapeHtml(m.trainerComment)+'</div>':"")+
+      '<div class="row" style="margin:9px 0 0"><input id="mc-'+escapeHtml(m.mealId)+'" placeholder="'+(m.trainerComment?"แก้คอมเมนต์...":"คอมเมนต์ถึงลูกค้า...")+'" style="flex:1">'+
+      '<button class="btn-primary btn-sm" onclick="commentMeal(\''+escapeJs(m.mealId)+'\')">ส่ง</button></div></div>';
+  });
+  return html;
+}
+async function commentMeal(mealId){
+  var el=document.getElementById("mc-"+mealId); var txt=el?el.value.trim():"";
+  if(!txt){ showToast("พิมพ์คอมเมนต์ก่อน"); return; }
+  state.busy=true;
+  try{
+    await apiCall("adminCommentMeal", withPin({ mealId:mealId, comment:txt }));
+    state.detail=await apiCall("adminGetClient", withPin({ clientId:state.detail.client.clientId }));
+    showToast("คอมเมนต์แล้ว");
+  }catch(e){ showToast(e.message); }
+  state.busy=false; render();
+}
+
+function renderDetailCoupons(b){
+  var coupons=b.coupons||[], c=b.client||{};
+  var html='<button class="btn-primary btn-block" onclick="openIssueCoupon(\''+escapeJs(c.clientId)+'\')" style="margin-bottom:12px">+ ออกคูปองให้ลูกค้าคนนี้</button>';
+  if(!coupons.length) return html+'<div class="empty">ยังไม่มีคูปอง</div>';
+  coupons.forEach(function(cp){ html+=adminTicket(cp); });
+  return html;
+}
+
+/* ---------- MEALS review tab ---------- */
+function renderMealsReview(){
+  var d=state.data||{}, pending=d.mealsPending||[], clients=d.clients||[];
+  var byId={}; clients.forEach(function(c){ byId[String(c.clientId)]=c; });
+  var html='<h1>อาหารรอคอมเมนต์</h1><p class="sub">รูป/บันทึกอาหารจากลูกค้าที่ยังไม่ได้ให้ฟีดแบ็ก</p>';
+  if(!pending.length) return html+'<div class="empty">เยี่ยม! คอมเมนต์ครบทุกมื้อแล้ว 🎉</div>';
+  pending.forEach(function(m){
+    var c=byId[String(m.clientId)];
+    html+='<div class="mrev"><div class="mrev-head"><span class="mrev-name">'+escapeHtml(c?c.name:"ลูกค้า")+'</span>'+
+      '<span class="mrev-type">'+escapeHtml(m.mealType||"มื้อ")+'</span><span class="hint">'+fmtDT(m.createdAt)+'</span></div>'+
+      (m.text?'<div style="font-size:13px">'+escapeHtml(m.text)+'</div>':"")+
+      (m.photoUrl?'<img class="mrev-photo" loading="lazy" src="'+escapeHtml(m.photoUrl)+'" onclick="openPhoto(\''+escapeJs(m.photoUrl)+'\')">':"")+
+      '<div class="row" style="margin:9px 0 0"><input id="mcq-'+escapeHtml(m.mealId)+'" placeholder="คอมเมนต์ถึงลูกค้า..." style="flex:1">'+
+      '<button class="btn-primary btn-sm" onclick="commentMealQuick(\''+escapeJs(m.mealId)+'\')">ส่ง</button></div></div>';
+  });
+  return html;
+}
+async function commentMealQuick(mealId){
+  var el=document.getElementById("mcq-"+mealId); var txt=el?el.value.trim():"";
+  if(!txt){ showToast("พิมพ์คอมเมนต์ก่อน"); return; }
+  state.busy=true;
+  try{ await apiCall("adminCommentMeal", withPin({ mealId:mealId, comment:txt })); await reload(true); showToast("คอมเมนต์แล้ว"); }
+  catch(e){ showToast(e.message); state.busy=false; }
+  state.busy=false;
+}
+
+/* ---------- COUPONS tab ---------- */
+function renderCouponsTab(){
+  var d=state.data||{}, coupons=d.coupons||[];
+  var active=coupons.filter(function(c){ return c.status==="active"; });
+  var others=coupons.filter(function(c){ return c.status!=="active"; });
+  var html='<div style="display:flex;align-items:center;justify-content:space-between"><h1>คูปอง</h1>'+
+    '<button class="btn-primary btn-sm" onclick="openIssueCoupon()">+ ออกคูปอง</button></div>'+
+    '<p class="sub">คูปองกาแฟ (ให้ลูกค้าสแกนที่ร้าน) และคูปองเทรน</p>';
+  html+='<div class="kpi-grid"><div class="kpi green"><div class="v">'+active.length+'</div><div class="l">ใช้งานได้</div></div>'+
+    '<div class="kpi"><div class="v">'+(d.kpi&&d.kpi.couponsRedeemedThisMonth||0)+'</div><div class="l">ใช้แล้วเดือนนี้</div></div></div>';
+  html+='<h2>ใช้งานได้</h2>';
+  if(!active.length) html+='<div class="empty" style="padding:24px">ยังไม่มีคูปองที่ใช้งานได้</div>';
+  active.forEach(function(cp){ html+=adminTicket(cp); });
+  if(others.length){
+    html+='<h2 style="color:var(--ink-3)">ประวัติ (ล่าสุด)</h2>';
+    others.slice(0,15).forEach(function(cp){ html+=adminTicket(cp); });
+  }
+  return html;
+}
+function adminTicket(cp){
+  var stChip = cp.status==="active" ? '<span class="st-chip st-active">ใช้ได้</span>'
+    : cp.status==="redeemed" ? '<span class="st-chip st-redeemed">ใช้แล้ว</span>'
+    : cp.status==="cancelled" ? '<span class="st-chip st-redeemed">ยกเลิก</span>'
+    : '<span class="st-chip st-expired">หมดอายุ</span>';
+  var sub = cp.status==="redeemed" ? "ใช้เมื่อ "+fmtDT(cp.redeemedAt)+(cp.redeemedBy?" · "+escapeHtml(cp.redeemedBy):"")
+    : (cp.holderName?escapeHtml(cp.holderName)+" · ":"")+"ถึง "+fmtDateY(cp.expiresAt);
+  var html='<div class="ticket'+(cp.status!=="active"?" dim":"")+'"><div class="ticket-top">'+
+    '<div class="ticket-ic'+(cp.kind==="coffee"?" coffee":"")+'">'+(cp.kind==="coffee"?icCoffee():icFit())+'</div>'+
+    '<div style="flex:1;min-width:0"><div class="ticket-title">'+escapeHtml(cp.title)+'</div><div class="ticket-sub">'+sub+'</div>'+
+    '<div class="code-big" style="margin-top:3px">'+escapeHtml(cp.code)+'</div></div>'+
+    '<div style="text-align:right">'+stChip+
+    (cp.status==="active"?'<div style="margin-top:8px"><button class="btn-ghost btn-sm" onclick="cancelCoupon(\''+escapeJs(cp.code)+'\')">ยกเลิก</button></div>':"")+
+    '</div></div></div>';
+  return html;
+}
+async function cancelCoupon(code){
+  state.busy=true;
+  try{ await apiCall("adminCancelCoupon", withPin({ code:code })); await reload(true); showToast("ยกเลิกคูปองแล้ว"); }
+  catch(e){ showToast(e.message); }
+  state.busy=false;
+}
+
+/* ---------- SETTINGS ---------- */
+function renderSettings(){
+  var d=state.data||{}, promo=d.promo||{};
+  var html='<h1>ตั้งค่า</h1><p class="sub">โปรโมชันลูกค้าร้านกาแฟ และ QR สำหรับพิมพ์วางที่ร้าน</p>';
+  html+='<div class="card"><div style="display:flex;align-items:center;gap:12px;margin-bottom:4px">'+
+    '<div style="flex:1"><div style="font-weight:700;font-size:14px">เปิดรับสิทธิ์โปรโม</div>'+
+    '<div class="hint">ให้ลูกค้าสแกน QR แล้วกรอกชื่อ+เบอร์ รับคูปองทดลองเทรน</div></div>'+
+    '<div class="toggle'+(promo.enabled?" on":"")+'" onclick="togglePromo('+(promo.enabled?"false":"true")+')"></div></div></div>';
+  html+='<div class="card"><div class="field"><label class="label">ชื่อโปรโมชัน</label>'+
+    '<input id="pmTitle" value="'+escapeHtml(promo.title||"")+'" placeholder="เช่น ทดลองเทรนฟรี 1 ครั้ง"></div>'+
+    '<div class="field"><label class="label">รายละเอียด</label>'+
+    '<textarea id="pmDesc" placeholder="อธิบายสิทธิ์และเงื่อนไข">'+escapeHtml(promo.desc||"")+'</textarea></div>'+
+    '<div class="field"><label class="label">อายุคูปอง (วัน)</label>'+
+    '<input id="pmDays" type="number" inputmode="numeric" value="'+escapeHtml(String(promo.days||30))+'"></div>'+
+    '<button class="btn-primary btn-block" onclick="savePromo()" '+(state.busy?"disabled":"")+'>บันทึกโปรโมชัน</button></div>';
+  // QR poster
+  var promoUrl = ""; try{ promoUrl=new URL("fit.html?promo=1", location.href).href; }catch(e){ promoUrl="fit.html?promo=1"; }
+  html+='<h2>QR สำหรับวางที่ร้าน</h2><div class="card print-area" style="text-align:center">'+
+    '<div style="font-weight:800;font-size:15px;letter-spacing:.5px">รับสิทธิ์ทดลองเทรนฟรี</div>'+
+    '<div class="hint" style="margin-top:2px">สแกนแล้วกรอกชื่อ-เบอร์ รับคูปองทันที</div>'+
+    '<div class="qr-print" data-qr="'+escapeHtml(promoUrl)+'" data-qrsize="440"></div>'+
+    '<div class="hint" style="word-break:break-all">'+escapeHtml(promoUrl)+'</div>'+
+    '<button class="btn-ghost btn-block no-print" style="margin-top:12px" onclick="window.print()">พิมพ์ / บันทึกเป็น PDF</button></div>';
+  html+='<div class="card"><div style="font-weight:700;margin-bottom:6px">ลิงก์แอปลูกค้า</div>'+
+    '<div class="hint" style="word-break:break-all">'+escapeHtml((function(){try{return new URL("fit.html",location.href).href;}catch(e){return "fit.html";}})())+'</div></div>';
+  html+='<button class="btn-ghost btn-block" onclick="doLogout()">ออกจากระบบ</button>';
+  return html;
+}
+async function togglePromo(on){
+  state.busy=true;
+  try{ var r=await apiCall("adminSetPromo", withPin({ enabled:on })); state.data.promo=r.promo; showToast(on==="true"||on===true?"เปิดรับสิทธิ์แล้ว":"ปิดรับสิทธิ์แล้ว"); }
+  catch(e){ showToast(e.message); }
+  state.busy=false; render();
+}
+async function savePromo(){
+  var title=document.getElementById("pmTitle").value.trim();
+  var desc=document.getElementById("pmDesc").value.trim();
+  var days=Number(document.getElementById("pmDays").value)||30;
+  state.busy=true; render();
+  try{ var r=await apiCall("adminSetPromo", withPin({ title:title, desc:desc, days:days })); state.data.promo=r.promo; showToast("บันทึกโปรโมชันแล้ว"); }
+  catch(e){ showToast(e.message); }
+  state.busy=false; render();
+}
+
+/* ---------- MODALS ---------- */
+function openOverlay(inner){
+  closeOverlay();
+  var ov=document.createElement("div"); ov.className="overlay"; ov.id="overlay";
+  ov.onclick=function(ev){ if(ev.target===ov) closeOverlay(); };
+  ov.innerHTML='<div class="panel">'+inner+'</div>';
+  document.body.appendChild(ov);
+}
+function closeOverlay(){ var ov=document.getElementById("overlay"); if(ov) ov.remove(); }
+function openPhoto(url){ openOverlay('<img class="full" src="'+escapeHtml(url)+'">'); }
+
+function openAddClient(){
+  openOverlay('<h3>เพิ่มลูกค้าใหม่</h3>'+
+    '<div class="field"><label class="label">ชื่อ-นามสกุล *</label><input id="ac-name" placeholder="ชื่อลูกค้า"></div>'+
+    '<div class="row"><div style="flex:1"><label class="label">เบอร์โทร *</label><input id="ac-phone" type="tel" inputmode="tel" placeholder="08x..."></div>'+
+    '<div style="flex:1"><label class="label">ตั้ง PIN *</label><input id="ac-pin" inputmode="numeric" placeholder="4 หลัก"></div></div>'+
+    '<div class="field"><label class="label">เป้าหมาย</label><select id="ac-goal">'+GOALS.map(function(g){ return '<option>'+g+'</option>'; }).join("")+'</select></div>'+
+    '<div class="row"><div style="flex:1"><label class="label">น้ำหนักเริ่ม (กก.)</label><input id="ac-sw" type="number" step="0.1" inputmode="decimal" placeholder="-"></div>'+
+    '<div style="flex:1"><label class="label">เป้าหมาย (กก.)</label><input id="ac-tw" type="number" step="0.1" inputmode="decimal" placeholder="-"></div></div>'+
+    '<div class="row"><div style="flex:1.4"><label class="label">ชื่อแพ็กเกจ</label><input id="ac-pkg" placeholder="เช่น 10 ครั้ง"></div>'+
+    '<div style="flex:1"><label class="label">จำนวนครั้ง</label><input id="ac-sess" type="number" inputmode="numeric" placeholder="0"></div></div>'+
+    '<div class="modal-actions"><button class="btn-ghost" onclick="closeOverlay()">ยกเลิก</button>'+
+    '<button class="btn-primary" onclick="submitAddClient()">เพิ่มลูกค้า</button></div>');
+}
+async function submitAddClient(){
+  var c={ name:val("ac-name"), phone:val("ac-phone"), pin:val("ac-pin"), goal:val("ac-goal"),
+    startWeight:val("ac-sw"), targetWeight:val("ac-tw"), packageName:val("ac-pkg"), sessionsTotal:Number(val("ac-sess"))||0 };
+  if(!c.name||!c.phone||!c.pin){ showToast("กรอกชื่อ เบอร์ และ PIN ให้ครบ"); return; }
+  try{ await apiCall("adminAddClient", withPin({ client:c })); closeOverlay(); await reload(true); showToast("เพิ่มลูกค้าแล้ว"); }
+  catch(e){ showToast(e.message); }
+}
+function val(id){ var e=document.getElementById(id); return e?e.value.trim():""; }
+
+function openEditClient(){
+  var c=state.detail.client;
+  openOverlay('<h3>แก้ไข '+escapeHtml(c.name)+'</h3>'+
+    '<div class="field"><label class="label">ชื่อ</label><input id="ec-name" value="'+escapeHtml(c.name)+'"></div>'+
+    '<div class="row"><div style="flex:1"><label class="label">เบอร์โทร</label><input id="ec-phone" value="'+escapeHtml(c.phone)+'"></div>'+
+    '<div style="flex:1"><label class="label">PIN</label><input id="ec-pin" value="'+escapeHtml(c.pin||"")+'"></div></div>'+
+    '<div class="field"><label class="label">เป้าหมาย</label><select id="ec-goal">'+GOALS.map(function(g){ return '<option'+(c.goal===g?" selected":"")+'>'+g+'</option>'; }).join("")+(GOALS.indexOf(c.goal)<0&&c.goal?'<option selected>'+escapeHtml(c.goal)+'</option>':"")+'</select></div>'+
+    '<div class="row"><div style="flex:1"><label class="label">น้ำหนักเริ่ม</label><input id="ec-sw" type="number" step="0.1" value="'+escapeHtml(c.startWeight||"")+'"></div>'+
+    '<div style="flex:1"><label class="label">เป้าหมาย</label><input id="ec-tw" type="number" step="0.1" value="'+escapeHtml(c.targetWeight||"")+'"></div></div>'+
+    '<div class="row"><div style="flex:1.4"><label class="label">ชื่อแพ็กเกจ</label><input id="ec-pkg" value="'+escapeHtml(c.packageName||"")+'"></div>'+
+    '<div style="flex:1"><label class="label">รวมกี่ครั้ง</label><input id="ec-total" type="number" value="'+escapeHtml(c.sessionsTotal||0)+'"></div></div>'+
+    '<div class="row"><div style="flex:1"><label class="label">ใช้ไปแล้ว</label><input id="ec-used" type="number" value="'+escapeHtml(c.sessionsUsed||0)+'"></div>'+
+    '<div style="flex:1"><label class="label">หมดอายุแพ็ก</label><input id="ec-exp" type="date" value="'+escapeHtml(String(c.packageExpiry||"").slice(0,10))+'"></div></div>'+
+    '<div class="field"><label class="label">โน้ต</label><input id="ec-note" value="'+escapeHtml(c.note||"")+'"></div>'+
+    '<div class="field"><label class="label">สถานะ</label><select id="ec-status"><option value="active"'+(c.status!=="inactive"?" selected":"")+'>ใช้งาน</option><option value="inactive"'+(c.status==="inactive"?" selected":"")+'>ปิดใช้งาน</option></select></div>'+
+    '<div class="modal-actions"><button class="btn-ghost" onclick="closeOverlay()">ยกเลิก</button>'+
+    '<button class="btn-primary" onclick="submitEditClient()">บันทึก</button></div>');
+}
+async function submitEditClient(){
+  var f={ name:val("ec-name"), phone:val("ec-phone"), pin:val("ec-pin"), goal:val("ec-goal"),
+    startWeight:val("ec-sw"), targetWeight:val("ec-tw"), packageName:val("ec-pkg"),
+    sessionsTotal:Number(val("ec-total"))||0, sessionsUsed:Number(val("ec-used"))||0,
+    packageExpiry:val("ec-exp"), note:val("ec-note"), status:val("ec-status") };
+  try{
+    state.detail=await apiCall("adminUpdateClient", withPin({ clientId:state.detail.client.clientId, fields:f }));
+    closeOverlay(); reload(true); showToast("บันทึกแล้ว");
+  }catch(e){ showToast(e.message); }
+}
+
+async function useSession(id){
+  if(!confirm("ตัดสิทธิ์การเทรน 1 ครั้งสำหรับวันนี้?")) return;
+  state.busy=true; render();
+  try{ state.detail=await apiCall("adminUseSession", withPin({ clientId:id })); reload(true); showToast("ตัด 1 ครั้งแล้ว"); }
+  catch(e){ showToast(e.message); }
+  state.busy=false; render();
+}
+
+function openIssueCoupon(clientId){
+  var clients=(state.data&&state.data.clients)||[];
+  var opts=clients.map(function(c){ return '<option value="'+escapeHtml(c.clientId)+'"'+(String(clientId)===String(c.clientId)?" selected":"")+'>'+escapeHtml(c.name)+'</option>'; }).join("");
+  openOverlay('<h3>ออกคูปอง</h3>'+
+    '<div class="field"><label class="label">ให้ลูกค้า</label><select id="ic-client">'+opts+'</select></div>'+
+    '<div class="field"><label class="label">ประเภท</label><select id="ic-kind" onchange="icKindChange()">'+
+    '<option value="coffee">☕ คูปองกาแฟ (ลูกค้าสแกนที่ร้าน)</option>'+
+    '<option value="fit">🏋️ คูปองเทรนฟรี (โค้ชยืนยันเอง)</option></select></div>'+
+    '<div class="field"><label class="label">ชื่อคูปอง / สิ่งที่ได้รับ</label><input id="ic-title" value="เครื่องดื่มฟรี 1 แก้ว ที่ร้านกาแฟ"></div>'+
+    '<div class="field"><label class="label">อายุคูปอง (วัน)</label><input id="ic-days" type="number" inputmode="numeric" value="30"></div>'+
+    '<div class="modal-actions"><button class="btn-ghost" onclick="closeOverlay()">ยกเลิก</button>'+
+    '<button class="btn-primary" onclick="submitIssueCoupon()">ออกคูปอง</button></div>');
+}
+function icKindChange(){
+  var kind=document.getElementById("ic-kind").value;
+  var t=document.getElementById("ic-title");
+  if(kind==="coffee" && (!t.value||t.value.indexOf("เทรน")>=0)) t.value="เครื่องดื่มฟรี 1 แก้ว ที่ร้านกาแฟ";
+  if(kind==="fit" && (!t.value||t.value.indexOf("กาแฟ")>=0||t.value.indexOf("เครื่องดื่ม")>=0)) t.value="เทรนฟรี 1 ครั้ง";
+}
+async function submitIssueCoupon(){
+  var p={ clientId:val("ic-client"), kind:val("ic-kind"), title:val("ic-title"), days:Number(val("ic-days"))||30 };
+  if(!p.clientId){ showToast("เลือกลูกค้าก่อน"); return; }
+  try{
+    var r=await apiCall("adminIssueCoupon", withPin(p));
+    closeOverlay();
+    if(state.detail && String(state.detail.client.clientId)===String(p.clientId)){
+      state.detail=await apiCall("adminGetClient", withPin({ clientId:p.clientId }));
+    }
+    reload(true);
+    showCouponIssued(r.coupon);
+  }catch(e){ showToast(e.message); }
+}
+function showCouponIssued(cp){
+  openOverlay('<h3>ออกคูปองสำเร็จ</h3>'+
+    '<div style="text-align:center">'+
+    '<div style="font-weight:700;font-size:14px;margin-bottom:4px">'+escapeHtml(cp.title)+'</div>'+
+    '<div class="hint">'+escapeHtml(cp.holderName||"")+' · ใช้ได้ถึง '+fmtDateY(cp.expiresAt)+'</div>'+
+    '<div class="qr-print" data-qr="'+escapeHtml(redeemUrl(cp.code))+'" data-qrsize="420"></div>'+
+    '<div class="code-big" style="font-size:19px">'+escapeHtml(cp.code)+'</div>'+
+    '<p class="hint" style="margin-top:8px">คูปองจะไปโผล่ในแอปลูกค้าอัตโนมัติ · ลูกค้าเปิดสแกนที่ร้านได้เลย</p></div>'+
+    '<div class="modal-actions"><button class="btn-primary btn-block" onclick="closeOverlay()">เสร็จสิ้น</button></div>');
+  paintQRs();
+}
+
+/* icons */
+function icCoffee(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h11v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V8Z"/><path d="M16 9h2.5a2.5 2.5 0 0 1 0 5H16"/><path d="M8 3.4c-.5.7-.5 1.5 0 2.2M11 3.4c-.5.7-.5 1.5 0 2.2"/></svg>'; }
+function icFit(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M4 8.5v7M17.5 6.5v11M20 8.5v7M6.5 12h11"/></svg>'; }
+
+/* polling */
+setInterval(async function(){
+  if (state.view!=="home" || state.detail || document.hidden || state.busy) return;
+  if (document.getElementById("overlay")) return;
+  if (document.activeElement && (document.activeElement.tagName==="INPUT"||document.activeElement.tagName==="TEXTAREA")) return;
+  try{ state.data=await apiCall("adminGetAll", withPin()); render(); }catch(e){}
+}, 45000);
+
+boot();
+</script>
+</body>
+</html>
