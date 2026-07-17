@@ -182,6 +182,16 @@ textarea{ resize:vertical; min-height:64px; }
 .done-banner svg{ width:19px; height:19px; flex-shrink:0; }
 .hint{ font-size:11.5px; color:var(--ink-3); line-height:1.55; }
 .divider{ height:1px; background:var(--line); margin:13px 0; }
+.stamp-num{ font-size:42px; font-weight:800; line-height:1; color:var(--accent-deep); }
+.stamp-cap{ font-size:12px; color:var(--ink-2); font-weight:700; margin-top:4px; }
+.mood-tag{ display:inline-flex; align-items:center; padding:3px 10px; border-radius:999px; font-size:10px; font-weight:800; letter-spacing:1.5px; background:var(--accent-soft); color:var(--accent-deep); text-transform:uppercase; flex-shrink:0; }
+.article-card{ border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); padding:14px 15px; margin-bottom:9px; box-shadow:var(--shadow-sm); cursor:pointer; }
+.article-card.locked{ opacity:.55; cursor:default; }
+.article-lock{ display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--ink-3); margin-top:6px; font-weight:600; }
+.article-lock svg{ width:14px; height:14px; flex-shrink:0; }
+.ft-card{ border:1.5px dashed var(--line-strong); border-radius:var(--radius); background:var(--surface-2); padding:14px 15px; margin-bottom:11px; }
+.ms-row{ padding:12px 0; border-bottom:1px dashed var(--line); }
+.ms-row:last-child{ border-bottom:none; padding-bottom:2px; }
 </style>
 </head>
 <body id="bodyEl">
@@ -206,7 +216,7 @@ textarea{ resize:vertical; min-height:64px; }
     <button class="nav-item" id="nav-program" onclick="setTab('program')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h6a1 1 0 0 1 1 1v1h1a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h1V5a1 1 0 0 1 1-1Z"/><path d="M9 12h6M9 16h4"/></svg>โปรแกรม</button>
     <button class="nav-item" id="nav-meals" onclick="setTab('meals')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v7a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V3M7 3v18"/><path d="M19 3c-2 1.5-3 4-3 7v2h3v9"/></svg>อาหาร</button>
     <button class="nav-item" id="nav-weight" onclick="setTab('weight')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="m4 15 4.5-4.5 3.5 3L18 7.5"/><path d="M18 11V7.5H14.5"/></svg>น้ำหนัก</button>
-    <button class="nav-item" id="nav-coupons" onclick="setTab('coupons')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-6Z"/><path d="M13 5v2M13 11v2M13 17v2"/></svg>คูปอง</button>
+    <button class="nav-item" id="nav-card" onclick="setTab('card')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3 10h18M7.5 15h3"/></svg>การ์ด</button>
     <button class="nav-item" id="nav-profile" onclick="setTab('profile')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4 4-6 8-6s7.2 2 8 6"/></svg>โปรไฟล์</button>
   </div>
 </nav>
@@ -223,13 +233,13 @@ var TYPE_META = {
 var THAI_MONTHS = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
 
 var state = {
-  view:"boot",          // boot | login | promo | home
-  tab:"program",        // program | meals | weight | coupons | profile
+  view:"boot",          // boot | login | register | home
+  tab:"program",        // program | meals | weight | card | profile
   auth:null,            // {phone, pin}
   data:null,            // getMyAll bundle
-  promo:null, promoResult:null,
+  promo:null,
   busy:false, openDays:{}, checks:{}, mealType:"เช้า", mealPhoto:null,
-  loginErr:"", promoErr:""
+  loginErr:"", registerErr:"", claimLocation:""
 };
 var chartMeta = null;
 
@@ -267,6 +277,10 @@ function redeemUrl(code){
   try{ return new URL("fit-coupon.html?code="+encodeURIComponent(code), location.href).href; }
   catch(e){ return String(code); }
 }
+function cardUrl(clientId){
+  try{ return new URL("fit-coupon.html?card="+encodeURIComponent(clientId), location.href).href; }
+  catch(e){ return String(clientId); }
+}
 function renderQR(el, text, size){
   el.innerHTML="";
   if (typeof QRCode==="undefined"){ el.innerHTML='<div class="qr-fallback">'+escapeHtml(text)+'</div>'; return; }
@@ -283,9 +297,9 @@ function paintQRs(){
 /* ---------- boot ---------- */
 async function boot(){
   var qs = new URLSearchParams(location.search);
-  var wantPromo = qs.get("promo")==="1" || location.hash==="#promo";
+  var wantPromo = qs.get("promo")==="1" || qs.get("register")==="1" || location.hash==="#promo" || location.hash==="#register";
   try{ state.promo = await apiCall("getPromo"); }catch(e){ state.promo = null; }
-  if (wantPromo && state.promo && state.promo.enabled){ state.view="promo"; render(); return; }
+  if (wantPromo && state.promo && state.promo.enabled){ state.view="register"; render(); return; }
   var saved = store.get("fg_auth");
   if (saved){
     try{
@@ -405,18 +419,22 @@ async function submitWeight(){
   }catch(e){ showToast(e.message); }
   state.busy=false; render();
 }
-async function claimPromoNow(){
-  var name=document.getElementById("pmName").value.trim();
-  var phone=document.getElementById("pmPhone").value.trim();
-  if(!name||!phone){ state.promoErr="กรุณากรอกชื่อและเบอร์โทร"; render(); return; }
-  state.busy=true; state.promoErr=""; render();
+async function registerCard(){
+  var name=document.getElementById("rgName").value.trim();
+  var phone=document.getElementById("rgPhone").value.trim();
+  var pin=document.getElementById("rgPin").value.trim();
+  if(!name||!phone){ state.registerErr="กรุณากรอกชื่อและเบอร์โทร"; render(); return; }
+  if(!pin||pin.length<4){ state.registerErr="กรุณาตั้ง PIN อย่างน้อย 4 หลัก"; render(); return; }
+  state.busy=true; state.registerErr=""; render();
   try{
-    var r = await apiCall("claimPromo", { name:name, phone:phone });
-    state.promoResult = r.coupon;
-  }catch(e){ state.promoErr=e.message; }
+    var auth={ phone:phone, pin:pin };
+    state.data = await apiCall("clientSelfRegister", { name:name, phone:phone, pin:pin });
+    state.auth=auth; store.set("fg_auth", JSON.stringify(auth));
+    state.view="home"; state.tab="card";
+  }catch(e){ state.registerErr=e.message; }
   state.busy=false; render();
 }
-function gotoPromo(){ state.view="promo"; state.promoErr=""; render(); window.scrollTo(0,0); }
+function gotoRegister(){ state.view="register"; state.registerErr=""; render(); window.scrollTo(0,0); }
 function gotoLogin(){ state.view="login"; render(); window.scrollTo(0,0); }
 function openPhoto(url){ openOverlay('<img class="full" src="'+escapeHtml(url)+'" alt="รูปอาหาร">'); }
 function openCouponZoom(code, title){
@@ -451,8 +469,8 @@ function render(){
     : "";
   if (state.view==="boot"){ c.innerHTML='<div class="loading-text">กำลังโหลด...</div>'; return; }
   if (state.view==="login"){ c.innerHTML=renderLogin(); return; }
-  if (state.view==="promo"){ c.innerHTML=renderPromo(); paintQRs(); return; }
-  ["program","meals","weight","coupons","profile"].forEach(function(t){
+  if (state.view==="register"){ c.innerHTML=renderRegister(); return; }
+  ["program","meals","weight","card","profile"].forEach(function(t){
     var el=document.getElementById("nav-"+t);
     if(el) el.classList.toggle("active", state.tab===t);
   });
@@ -460,7 +478,7 @@ function render(){
   if (state.tab==="program") html=renderProgram();
   else if (state.tab==="meals") html=renderMeals();
   else if (state.tab==="weight") html=renderWeight();
-  else if (state.tab==="coupons") html=renderCoupons();
+  else if (state.tab==="card") html=renderCard();
   else html=renderProfile();
   c.innerHTML=html;
   paintQRs();
@@ -469,7 +487,7 @@ function render(){
 
 function renderLogin(){
   var promoLink = (state.promo && state.promo.enabled)
-    ? '<div class="promo-link" onclick="gotoPromo()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h11v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V8Z"/><path d="M16 9h2.5a2.5 2.5 0 0 1 0 5H16"/><path d="M8 3.4c-.5.7-.5 1.5 0 2.2M11 3.4c-.5.7-.5 1.5 0 2.2"/></svg>ลูกค้าร้านกาแฟ? แตะรับสิทธิ์ "'+escapeHtml(state.promo.title)+'"</div>'
+    ? '<div class="promo-link" onclick="gotoRegister()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h11v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V8Z"/><path d="M16 9h2.5a2.5 2.5 0 0 1 0 5H16"/><path d="M8 3.4c-.5.7-.5 1.5 0 2.2M11 3.4c-.5.7-.5 1.5 0 2.2"/></svg>ลูกค้าร้านกาแฟ? แตะสมัครบัตรสะสมแต้มฟรี</div>'
     : "";
   return '<div class="login-hero">'+
     '<div class="biglogo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M4 8.5v7M17.5 6.5v11M20 8.5v7M6.5 12h11"/></svg></div>'+
@@ -485,32 +503,19 @@ function renderLogin(){
     '<p class="hint" style="text-align:center;margin-top:14px">ยังไม่มีบัญชี? ติดต่อโค้ชเพื่อสมัครและรับ PIN</p>';
 }
 
-function renderPromo(){
+function renderRegister(){
   var p=state.promo||{};
-  if (state.promoResult){
-    var cp=state.promoResult;
-    return '<div class="promo-head"><div class="k">รับสิทธิ์สำเร็จ</div><div class="t">'+escapeHtml(cp.title)+'</div>'+
-      '<div class="d">แคปหน้าจอนี้เก็บไว้ แล้วติดต่อโค้ชเพื่อนัดวันเทรนได้เลย</div></div>'+
-      '<div class="ticket"><div class="ticket-top"><div class="ticket-ic">'+icFit()+'</div>'+
-      '<div class="ticket-body"><div class="ticket-title">'+escapeHtml(cp.title)+'</div>'+
-      '<div class="ticket-sub">สำหรับ '+escapeHtml(cp.holderName)+' · ใช้ได้ถึง '+fmtDateY(cp.expiresAt)+'</div></div>'+
-      '<span class="st-chip st-active">ใช้งานได้</span></div>'+
-      '<div class="ticket-cut"></div>'+
-      '<div class="ticket-bottom"><div class="qr-slot" data-qr="'+escapeHtml(redeemUrl(cp.code))+'"></div>'+
-      '<div><div class="code-big">'+escapeHtml(cp.code)+'</div>'+
-      '<div class="hint" style="margin-top:5px">แจ้งโค้ดนี้กับโค้ชในวันที่มาเทรน</div></div></div></div>'+
-      '<button class="btn-ghost btn-block" onclick="gotoLogin()" style="margin-top:4px">กลับหน้าเข้าสู่ระบบ</button>';
-  }
-  return '<div class="promo-head"><div class="k">สิทธิพิเศษลูกค้าร้านกาแฟ</div>'+
-    '<div class="t">'+escapeHtml(p.title||"ทดลองเทรนฟรี")+'</div>'+
+  return '<div class="promo-head"><div class="k">สมัครบัตรสะสมแต้มฟรี</div>'+
+    '<div class="t">'+escapeHtml(p.title||"สะสมแก้ว ลุ้นโปรแกรมเทรนฟรี")+'</div>'+
     '<div class="d">'+escapeHtml(p.desc||"")+'</div></div>'+
     '<div class="card">'+
-    (state.promoErr?'<div class="err-box">'+escapeHtml(state.promoErr)+'</div>':"")+
-    '<div class="field"><label class="label">ชื่อ-นามสกุล</label><input id="pmName" placeholder="ชื่อของคุณ"></div>'+
-    '<div class="field"><label class="label">เบอร์โทรศัพท์</label><input id="pmPhone" type="tel" inputmode="tel" placeholder="08x-xxx-xxxx"></div>'+
-    '<button class="btn-primary btn-block" onclick="claimPromoNow()" '+(state.busy?"disabled":"")+'>'+(state.busy?"กำลังรับสิทธิ์...":"รับสิทธิ์เลย")+'</button>'+
-    '<p class="hint" style="margin-top:10px">1 เบอร์ต่อ 1 สิทธิ์ · คูปองมีอายุ '+escapeHtml(String(p.days||30))+' วันนับจากวันรับสิทธิ์</p></div>'+
-    '<button class="btn-ghost btn-block" onclick="gotoLogin()">ฉันเป็นสมาชิกอยู่แล้ว — เข้าสู่ระบบ</button>';
+    (state.registerErr?'<div class="err-box">'+escapeHtml(state.registerErr)+'</div>':"")+
+    '<div class="field"><label class="label">ชื่อ-นามสกุล</label><input id="rgName" placeholder="ชื่อของคุณ"></div>'+
+    '<div class="field"><label class="label">เบอร์โทรศัพท์</label><input id="rgPhone" type="tel" inputmode="tel" placeholder="08x-xxx-xxxx" autocomplete="tel"></div>'+
+    '<div class="field"><label class="label">ตั้ง PIN (4 หลักขึ้นไป ใช้เข้าสู่ระบบครั้งถัดไป)</label><input id="rgPin" type="password" inputmode="numeric" placeholder="••••" onkeydown="if(event.key===\'Enter\')registerCard()"></div>'+
+    '<button class="btn-primary btn-block" onclick="registerCard()" '+(state.busy?"disabled":"")+'>'+(state.busy?"กำลังสมัคร...":"สมัครบัตร รับ QR ทันที")+'</button>'+
+    '<p class="hint" style="margin-top:10px">สมัครฟรี ไม่มีค่าใช้จ่าย · ให้พนักงานสแกนบัตรทุกครั้งที่ซื้อเครื่องดื่มเพื่อสะสมแต้ม</p></div>'+
+    '<button class="btn-ghost btn-block" onclick="gotoLogin()">มีบัตรอยู่แล้ว — เข้าสู่ระบบ</button>';
 }
 
 /* ----- home: program ----- */
@@ -734,12 +739,163 @@ function bindChart(){
   svg.addEventListener("pointerleave",onLeave);
 }
 
-/* ----- home: coupons & package ----- */
-function renderCoupons(){
-  var d=state.data||{}, c=d.client||{}, coupons=d.coupons||[];
+/* ----- home: card (stamp loyalty) ----- */
+function renderCard(){
+  var d=state.data||{}, c=d.client||{};
+  var stampCount=Number(c.stampCount||0);
+  var ms=d.milestones||{m1:15,m2:30};
+  var m1=Number(ms.m1||15), m2=Number(ms.m2||30);
+  var rewards=d.rewards||[];
+  var nextLabel="";
+  if(stampCount<m1) nextLabel="อีก "+(m1-stampCount)+" แต้ม รับโปรแกรมเทรนฟรี 15 วัน";
+  else if(!c.milestone15At) nextLabel="ครบแล้ว! รับรางวัล "+m1+" แต้มได้เลย";
+  else if(stampCount<m2) nextLabel="อีก "+(m2-stampCount)+" แต้ม รับโปรแกรมออนไลน์ฟรี 1 เดือน";
+  else if(!c.milestone30At) nextLabel="ครบแล้ว! รับรางวัล "+m2+" แต้มได้เลย";
+  else nextLabel="ครบทุกรางวัลแล้ว ขอบคุณที่อุดหนุนกันนะ";
+
+  var html='<h1>บัตรสะสมแต้ม</h1><p class="sub">ให้พนักงานสแกน QR นี้ทุกครั้งที่ซื้อเครื่องดื่ม เพื่อรับแต้มและปลดล็อกบทความใหม่</p>';
+
+  html+='<div class="card" style="text-align:center">'+
+    '<div class="qr-big" data-qr="'+escapeHtml(cardUrl(c.clientId))+'"></div>'+
+    '<div style="font-size:15px;font-weight:800">'+escapeHtml(c.name||"")+'</div>'+
+    '<div class="hint">'+escapeHtml(c.phone||"")+'</div>'+
+    '<div class="stamp-num" style="margin-top:10px">'+stampCount+'</div>'+
+    '<div class="stamp-cap">แต้มสะสมทั้งหมด</div>'+
+    (nextLabel?'<span class="warn-chip" style="margin-top:9px">'+escapeHtml(nextLabel)+'</span>':"")+
+    '</div>';
+
+  html+='<div class="card">'+
+    milestoneBlock("15", m1, stampCount, c.milestone15At, "ครบ "+m1+" แต้ม", "โปรแกรมเทรนฟรี 15 วัน (เลือกในยิม หรือที่บ้าน)", rewards)+
+    milestoneBlock("30", m2, stampCount, c.milestone30At, "ครบ "+m2+" แต้ม", "โปรแกรมออนไลน์ฟรี 1 เดือน มูลค่า 3,500 บาท ดูแลครบวงจร", rewards)+
+    '</div>';
+
+  html+=renderFastTrackCard(d.fastTrack);
+
+  html+='<h2>บทความ & เทคนิครายสัปดาห์</h2>'+renderArticles(d.articles||[]);
+
+  html+='<div class="divider"></div>'+renderPackageCoupons(d);
+
+  return html;
+}
+
+function milestoneBlock(milestoneKey, threshold, stampCount, claimedAt, rewardTitle, rewardDesc, rewards){
+  var pct=threshold>0?Math.min(100,Math.round(stampCount/threshold*100)):0;
+  var right;
+  if(!claimedAt && stampCount>=threshold){
+    right='<button class="btn-primary" onclick="openClaimMilestone(\''+milestoneKey+'\')" style="padding:8px 14px;font-size:12.5px;flex-shrink:0">รับรางวัล</button>';
+  } else if(!claimedAt){
+    right='<span class="hint" style="flex-shrink:0">อีก '+(threshold-stampCount)+' แต้ม</span>';
+  } else {
+    var matches=rewards.filter(function(r){ return String(r.milestone)===String(milestoneKey); });
+    var rw=matches.length?matches[0]:null;
+    right = (rw && rw.status==="fulfilled")
+      ? '<span class="st-chip st-active" style="flex-shrink:0">จัดโปรแกรมแล้ว</span>'
+      : '<span class="st-chip" style="flex-shrink:0;background:var(--amber-bg);color:var(--amber)">รอโค้ชจัดโปรแกรม</span>';
+  }
+  return '<div class="ms-row">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:7px">'+
+    '<div><div style="font-size:13.5px;font-weight:800">'+escapeHtml(rewardTitle)+'</div>'+
+    '<div class="hint">'+escapeHtml(rewardDesc)+'</div></div>'+right+'</div>'+
+    '<div class="pkg-bar" style="margin:0"><div class="pkg-fill" style="width:'+pct+'%"></div></div>'+
+    '<div class="hint" style="margin-top:4px">'+Math.min(stampCount,threshold)+' / '+threshold+' แต้ม</div>'+
+    '</div>';
+}
+
+function renderArticles(articles){
+  if(!articles.length) return '<div class="empty">ยังไม่มีบทความ<br>รอเทรนเนอร์อัปเดตเร็ว ๆ นี้</div>';
+  var html="";
+  articles.forEach(function(a){
+    if(a.unlocked){
+      html+='<div class="article-card" onclick="openArticle(\''+escapeJs(a.articleId)+'\')">'+
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'+
+        '<div style="font-size:14px;font-weight:800;line-height:1.4">'+escapeHtml(a.title)+'</div>'+
+        (a.mood?'<span class="mood-tag">'+escapeHtml(a.mood)+'</span>':"")+
+        '</div><div class="hint" style="margin-top:5px">อัปเดต '+fmtDateY(a.publishDate)+'</div></div>';
+    } else {
+      html+='<div class="article-card locked">'+
+        '<div style="font-size:14px;font-weight:800;line-height:1.4;color:var(--ink-2)">'+escapeHtml(a.title)+'</div>'+
+        '<div class="article-lock">'+icLock()+'ซื้อเครื่องดื่มแล้วให้พนักงานสแกน เพื่อปลดล็อกตั้งแต่ '+fmtDateY(a.publishDate)+'</div></div>';
+    }
+  });
+  return html;
+}
+function openArticle(articleId){
+  var d=state.data||{}, list=d.articles||[], a=null;
+  list.forEach(function(x){ if(x.articleId===articleId) a=x; });
+  if(!a || !a.unlocked) return;
+  openOverlay(
+    (a.mood?'<div class="mood-tag" style="margin-bottom:8px">'+escapeHtml(a.mood)+'</div>':"")+
+    '<div style="font-size:17px;font-weight:800;line-height:1.4;margin-bottom:4px">'+escapeHtml(a.title)+'</div>'+
+    '<div class="hint" style="margin-bottom:12px">อัปเดต '+fmtDateY(a.publishDate)+'</div>'+
+    '<div style="font-size:14px;line-height:1.75;white-space:pre-wrap;word-break:break-word">'+escapeHtml(a.body)+'</div>'+
+    '<button class="btn-ghost btn-block" onclick="closeOverlay()" style="margin-top:14px">ปิด</button>'
+  );
+}
+
+function renderFastTrackCard(ft){
+  ft=ft||{};
+  return '<div class="ft-card"><span class="type-chip">FAST-TRACK</span>'+
+    '<div style="font-size:14px;font-weight:800;line-height:1.4;margin-top:7px">ใจร้อน? จ่าย '+num1(ft.price||1990)+' บาท รับสิทธิ์ทันที</div>'+
+    '<div class="hint" style="margin-top:5px;line-height:1.6">เมนูสุขภาพ '+(ft.mealQuota||30)+' สิทธิ์/เดือน (มูลค่าไม่เกินสิทธิ์ละ '+(ft.mealValue||85)+' บาท) พร้อมเทรนฟรี '+(ft.months||1)+' เดือน</div>'+
+    '<div class="hint" style="margin-top:7px">แจ้งพนักงานหน้าร้านหรือโค้ชเพื่อชำระเงินและรับสิทธิ์ได้เลย</div>'+
+    '</div>';
+}
+
+function openClaimMilestone(milestone){
+  state.claimLocation="";
+  var goalChips=["ลดน้ำหนัก","วิ่ง","เพิ่มกล้ามเนื้อ","ฟิตทั่วไป"];
+  var chipsHtml="";
+  goalChips.forEach(function(g){ chipsHtml+='<span class="chip" onclick="pickGoalChip(\''+g+'\')">'+g+'</span>'; });
+  openOverlay(
+    '<div style="text-align:center">'+
+    '<div style="font-size:15px;font-weight:800;margin-bottom:4px">เคลมรางวัล '+(milestone==="15"?"เทรนฟรี 15 วัน":"โปรแกรมออนไลน์ฟรี 1 เดือน")+'</div>'+
+    '<p class="hint" style="margin-bottom:14px">เลือกรูปแบบและเป้าหมาย แล้วโค้ชจะจัดโปรแกรมให้คุณ</p>'+
+    '<div style="text-align:left">'+
+    '<label class="label">สถานที่เทรน</label>'+
+    '<div class="row" style="margin-bottom:13px">'+
+    '<div class="chip" id="locGym" style="flex:1;text-align:center" onclick="selectClaimLocation(\'gym\')">ในยิม</div>'+
+    '<div class="chip" id="locHome" style="flex:1;text-align:center" onclick="selectClaimLocation(\'home\')">ที่บ้าน</div>'+
+    '</div>'+
+    '<label class="label">เป้าหมาย</label>'+
+    '<div class="chiprow" style="padding-bottom:8px">'+chipsHtml+'</div>'+
+    '<div class="field"><input id="claimGoalInput" placeholder="พิมพ์เป้าหมายของคุณ"></div>'+
+    '</div>'+
+    '<button class="btn-primary btn-block" onclick="submitClaimMilestone(\''+milestone+'\')" '+(state.busy?"disabled":"")+'>ยืนยันรับรางวัล</button>'+
+    '<button class="btn-ghost btn-block" onclick="closeOverlay()" style="margin-top:8px">ยกเลิก</button>'+
+    '</div>'
+  );
+}
+function selectClaimLocation(loc){
+  state.claimLocation=loc;
+  var g=document.getElementById("locGym"), h=document.getElementById("locHome");
+  if(g) g.classList.toggle("active", loc==="gym");
+  if(h) h.classList.toggle("active", loc==="home");
+}
+function pickGoalChip(g){
+  var el=document.getElementById("claimGoalInput");
+  if(el) el.value=g;
+}
+async function submitClaimMilestone(milestone){
+  if(state.busy) return;
+  var el=document.getElementById("claimGoalInput");
+  var goal=el?el.value.trim():"";
+  if(!state.claimLocation){ showToast("กรุณาเลือกสถานที่เทรน"); return; }
+  if(!goal){ showToast("กรุณากรอกเป้าหมาย"); return; }
+  state.busy=true;
+  try{
+    state.data = await apiCall("clientClaimMilestone", Object.assign({}, state.auth, { milestone:milestone, location:state.claimLocation, goal:goal }));
+    closeOverlay();
+    showToast("รับรางวัลสำเร็จ! รอโค้ชจัดโปรแกรมให้คุณ");
+  }catch(e){ showToast(e.message); }
+  state.busy=false; render();
+}
+
+/* ----- home: package & coupons (inside การ์ด tab) ----- */
+function renderPackageCoupons(d){
+  var c=d.client||{}, coupons=d.coupons||[];
   var total=Number(c.sessionsTotal||0), used=Number(c.sessionsUsed||0), left=Math.max(0,total-used);
   var pct= total>0 ? Math.min(100,Math.round(used/total*100)) : 0;
-  var html='<h1>แพ็กเกจ & คูปอง</h1><p class="sub">สิทธิ์การเทรนของคุณ และคูปองไว้สแกนที่ร้านกาแฟ</p>';
+  var html='<h2>แพ็กเกจเทรนของฉัน</h2>';
   if (total>0){
     var expSoon = c.packageExpiry && daysUntil(c.packageExpiry)<=7 && daysUntil(c.packageExpiry)>=0;
     var expired = c.packageExpiry && daysUntil(c.packageExpiry)<0;
@@ -768,21 +924,27 @@ function renderCoupons(){
   return html;
 }
 function ticketHtml(cp, dim){
+  var isVoucher = cp.kind==="mealVoucher";
   var stChip = cp.status==="active" ? '<span class="st-chip st-active">ใช้งานได้</span>'
-    : cp.status==="redeemed" ? '<span class="st-chip st-redeemed">ใช้แล้ว</span>'
+    : cp.status==="redeemed" ? '<span class="st-chip st-redeemed">'+(isVoucher?"ใช้ครบแล้ว":"ใช้แล้ว")+'</span>'
     : cp.status==="cancelled" ? '<span class="st-chip st-redeemed">ยกเลิก</span>'
     : '<span class="st-chip st-expired">หมดอายุ</span>';
-  var sub = cp.status==="redeemed" ? "ใช้เมื่อ "+fmtDT(cp.redeemedAt)+(cp.redeemedBy?" · "+escapeHtml(cp.redeemedBy):"")
-    : "ใช้ได้ถึง "+fmtDateY(cp.expiresAt);
+  var sub;
+  if (isVoucher){
+    sub = "ใช้ไปแล้ว "+(cp.quotaUsed||0)+"/"+(cp.quotaTotal||0)+" สิทธิ์ · ถึง "+fmtDateY(cp.expiresAt);
+  } else {
+    sub = cp.status==="redeemed" ? "ใช้เมื่อ "+fmtDT(cp.redeemedAt)+(cp.redeemedBy?" · "+escapeHtml(cp.redeemedBy):"")
+      : "ใช้ได้ถึง "+fmtDateY(cp.expiresAt);
+  }
   var html='<div class="ticket'+(dim?" dim":"")+'"><div class="ticket-top">'+
-    '<div class="ticket-ic'+(cp.kind==="coffee"?" coffee":"")+'">'+(cp.kind==="coffee"?icCoffee():icFit())+'</div>'+
+    '<div class="ticket-ic'+(cp.kind==="coffee"||isVoucher?" coffee":"")+'">'+(cp.kind==="coffee"||isVoucher?icCoffee():icFit())+'</div>'+
     '<div class="ticket-body"><div class="ticket-title">'+escapeHtml(cp.title)+'</div>'+
     '<div class="ticket-sub">'+sub+'</div></div>'+stChip+'</div>';
   if (cp.status==="active"){
     html+='<div class="ticket-cut"></div><div class="ticket-bottom">'+
       '<div class="qr-slot" data-qr="'+escapeHtml(redeemUrl(cp.code))+'" onclick="openCouponZoom(\''+escapeJs(cp.code)+'\',\''+escapeJs(cp.title)+'\')"></div>'+
       '<div><div class="code-big">'+escapeHtml(cp.code)+'</div>'+
-      '<div class="hint" style="margin-top:5px">'+(cp.kind==="coffee"?"ยื่นให้พนักงานร้านกาแฟสแกน หรือแตะ QR เพื่อขยาย":"แจ้งโค้ชเพื่อใช้สิทธิ์นี้")+'</div></div></div>';
+      '<div class="hint" style="margin-top:5px">'+(isVoucher?"ยื่นให้พนักงานสแกนทุกครั้งที่ใช้สิทธิ์เมนูสุขภาพ":(cp.kind==="coffee"?"ยื่นให้พนักงานร้านกาแฟสแกน หรือแตะ QR เพื่อขยาย":"แจ้งโค้ชเพื่อใช้สิทธิ์นี้"))+'</div></div></div>';
   }
   html+='</div>';
   return html;
@@ -813,6 +975,7 @@ function renderProfile(){
 function icCheck(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 4.8-5.3"/></svg>'; }
 function icCoffee(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h11v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V8Z"/><path d="M16 9h2.5a2.5 2.5 0 0 1 0 5H16"/><path d="M8 3.4c-.5.7-.5 1.5 0 2.2M11 3.4c-.5.7-.5 1.5 0 2.2"/></svg>'; }
 function icFit(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M4 8.5v7M17.5 6.5v11M20 8.5v7M6.5 12h11"/></svg>'; }
+function icLock(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>'; }
 function escapeJs(s){ return String(s==null?"":s).replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/"/g,"&quot;").replace(/\n/g," "); }
 
 /* ---------- polling ---------- */
