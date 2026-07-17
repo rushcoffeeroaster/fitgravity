@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
-<title>Fit Gravity · สแกนคูปอง</title>
+<title>Fit Gravity · สแกนบัตร/คูปอง</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700;800&family=Orbitron:wght@600;800&display=swap" rel="stylesheet">
@@ -95,7 +95,7 @@ input:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(
 <div class="appbar">
   <div class="appbar-inner">
     <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M4 8.5v7M17.5 6.5v11M20 8.5v7M6.5 12h11"/></svg></div>
-    <div><div class="wordmark">FIT GRAVITY</div><div class="brand-tag">จุดสแกนคูปอง · สำหรับพนักงาน</div></div>
+    <div><div class="wordmark">FIT GRAVITY</div><div class="brand-tag">จุดสแกนบัตร/คูปอง · สำหรับพนักงาน</div></div>
   </div>
 </div>
 
@@ -108,8 +108,13 @@ var API_URL = "https://script.google.com/macros/s/AKfycbwQHtq7-3Ry1i7cVgblmIOnaL
 var THAI_MONTHS = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
 
 var state = {
-  view:"scan",         // scan | lookup | pin | result
-  code:"", coupon:null, result:null, resultKind:"", resultMsg:"",
+  mode:"card",          // card | coupon — which flow the scan/manual screen defaults to
+  view:"scan",           // scan | manual | lookup | detail | cardDetail | pin | result
+  code:"", coupon:null,
+  card:null,              // staffLookupCard result {client, milestones}
+  qty:1,                  // stamp quantity stepper (card mode)
+  stampResult:null,       // staffAddStamp result (for celebration screen)
+  result:null, resultKind:"", resultMsg:"",
   pin:"", busy:false, scanError:""
 };
 var qr=null, qrRunning=false;
@@ -142,11 +147,24 @@ function extractCode(txt){
   // otherwise assume the text itself is the code
   return txt.toUpperCase();
 }
+/* auto-detect whether a scanned URL/raw text is a customer card or a coupon code */
+function extractScan(txt){
+  txt=String(txt||"").trim();
+  var mCard=txt.match(/[?&]card=([^&]+)/i);
+  if(mCard) return { kind:"card", value:decodeURIComponent(mCard[1]) };
+  var mCode=txt.match(/[?&]code=([^&]+)/i);
+  if(mCode) return { kind:"coupon", value:decodeURIComponent(mCode[1]).toUpperCase() };
+  var up=txt.toUpperCase();
+  if(/^CL\d/.test(up)) return { kind:"card", value:txt };
+  return { kind:"coupon", value:up };
+}
 
 function boot(){
   var qs=new URLSearchParams(location.search);
-  var pre=qs.get("code");
-  if(pre){ lookupCode(extractCode(pre)); }
+  var preCard=qs.get("card");
+  var preCode=qs.get("code");
+  if(preCard){ lookupCard(preCard); }
+  else if(preCode){ lookupCode(extractCode(preCode)); }
   else { state.view="scan"; render(); }
 }
 
@@ -171,10 +189,15 @@ async function onScan(decoded){
   if(state.busy) return;
   state.busy=true;
   await stopScanner();
-  lookupCode(extractCode(decoded));
+  routeScan(extractScan(decoded));
+}
+function routeScan(parsed){
+  if(parsed.kind==="card") lookupCard(parsed.value);
+  else lookupCode(parsed.value);
 }
 
 async function lookupCode(code){
+  state.mode="coupon";
   state.code=code; state.busy=true; state.view="lookup"; render();
   try{
     var r=await apiCall("getCoupon", { code:code });
@@ -185,14 +208,34 @@ async function lookupCode(code){
   }
   state.busy=false; render();
 }
+async function lookupCard(clientId, phone){
+  state.mode="card";
+  state.busy=true; state.view="lookup"; render();
+  try{
+    var payload = clientId ? { clientId:clientId } : { phone:phone };
+    var r=await apiCall("staffLookupCard", payload);
+    state.card=r; state.qty=1; state.view="cardDetail";
+  }catch(e){
+    state.resultKind="bad"; state.resultMsg=e.message; state.view="result";
+  }
+  state.busy=false; render();
+}
 
-function goScan(){ state.view="scan"; state.code=""; state.coupon=null; state.pin=""; render(); }
+function goScan(){ state.view="scan"; state.code=""; state.coupon=null; state.card=null; state.qty=1; state.pin=""; render(); }
 function goManual(){ stopScanner(); state.view="manual"; render(); }
+function setMode(m){ if(state.mode===m) return; state.mode=m; state.scanError=""; render(); }
+function stepQty(d){ state.qty=Math.max(1,Math.min(20,state.qty+d)); render(); }
 
 async function submitManual(){
-  var code=document.getElementById("manualCode").value.trim();
-  if(!code){ showToast("กรอกโค้ดก่อน"); return; }
-  lookupCode(extractCode(code));
+  if(state.mode==="card"){
+    var phone=document.getElementById("manualPhone").value.trim();
+    if(!phone){ showToast("กรอกเบอร์โทรก่อน"); return; }
+    lookupCard(null, phone);
+  } else {
+    var code=document.getElementById("manualCode").value.trim();
+    if(!code){ showToast("กรอกโค้ดก่อน"); return; }
+    lookupCode(extractCode(code));
+  }
 }
 
 function goPin(){
@@ -209,10 +252,20 @@ async function pinSubmit(){
   if(state.pin.length<4){ showToast("กรอก PIN อย่างน้อย 4 หลัก"); return; }
   state.busy=true; render();
   try{
-    var r=await apiCall("redeemCoupon", { code:state.code, staffPin:state.pin });
-    state.coupon=r.coupon;
-    state.resultKind="ok"; state.resultMsg="";
-    state.view="result";
+    if(state.mode==="card"){
+      var rc=await apiCall("staffAddStamp", { clientId:(state.card.client||{}).clientId, qty:state.qty, staffPin:state.pin });
+      state.stampResult=rc; state.resultKind="stamp"; state.resultMsg="";
+      state.view="result";
+    } else if(state.coupon && state.coupon.kind==="mealVoucher"){
+      var rv=await apiCall("redeemMealVoucher", { code:state.code, staffPin:state.pin });
+      state.coupon=rv.coupon; state.resultKind="voucher"; state.resultMsg="";
+      state.view="result";
+    } else {
+      var r=await apiCall("redeemCoupon", { code:state.code, staffPin:state.pin });
+      state.coupon=r.coupon;
+      state.resultKind="ok"; state.resultMsg="";
+      state.view="result";
+    }
   }catch(e){
     state.resultKind="bad"; state.resultMsg=e.message;
     // stay on detail if it was just a wrong pin
@@ -221,66 +274,115 @@ async function pinSubmit(){
   }
   state.busy=false; render();
 }
+function useVoucherAgain(){ state.pin=""; state.view="pin"; render(); }
 
 /* ---------- render ---------- */
 function render(){
   var c=document.getElementById("content");
   if(state.view==="scan"){ c.innerHTML=renderScan(); setTimeout(startScanner, 60); return; }
   if(state.view==="manual"){ c.innerHTML=renderManual(); return; }
-  if(state.view==="lookup"){ c.innerHTML='<div class="spin">กำลังตรวจสอบคูปอง...</div>'; return; }
+  if(state.view==="lookup"){ c.innerHTML='<div class="spin">'+(state.mode==="card"?"กำลังค้นหาบัตร...":"กำลังตรวจสอบคูปอง...")+'</div>'; return; }
   if(state.view==="detail"){ c.innerHTML=renderCouponDetail(); return; }
+  if(state.view==="cardDetail"){ c.innerHTML=renderCardDetail(); return; }
   if(state.view==="pin"){ c.innerHTML=renderPin(); return; }
   if(state.view==="result"){ c.innerHTML=renderResult(); return; }
 }
 
+function modeToggleHtml(){
+  return '<div style="display:flex;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px;margin-bottom:14px">'+
+    '<div style="flex:1;text-align:center;padding:9px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;'+(state.mode==="card"?"background:var(--accent-grad);color:var(--on-accent)":"color:var(--ink-2)")+'" onclick="setMode(\'card\')">สแกนการ์ดลูกค้า</div>'+
+    '<div style="flex:1;text-align:center;padding:9px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;'+(state.mode==="coupon"?"background:var(--accent-grad);color:var(--on-accent)":"color:var(--ink-2)")+'" onclick="setMode(\'coupon\')">สแกนคูปอง</div>'+
+    '</div>';
+}
 function renderScan(){
-  return '<h1>สแกนคูปอง</h1><p class="sub">เล็ง QR ของลูกค้าให้อยู่ในกรอบ ระบบจะตรวจให้อัตโนมัติ</p>'+
+  var title = state.mode==="card" ? "สแกนบัตรลูกค้า" : "สแกนคูปอง";
+  var sub = state.mode==="card" ? "เล็ง QR บัตรลูกค้าให้อยู่ในกรอบ เพื่อเพิ่มแต้มสะสม" : "เล็ง QR ของลูกค้าให้อยู่ในกรอบ ระบบจะตรวจให้อัตโนมัติ";
+  return '<h1>'+title+'</h1><p class="sub">'+sub+'</p>'+
+    modeToggleHtml()+
     (state.scanError?'<div class="err-box">'+escapeHtml(state.scanError)+'</div>':"")+
     '<div class="scan-wrap"><div id="reader"></div><div class="scan-overlay"><div class="scan-frame"></div></div></div>'+
     '<div class="divider-or">หรือ</div>'+
-    '<button class="btn-ghost" onclick="goManual()">⌨️ พิมพ์โค้ดคูปองเอง</button>'+
+    '<button class="btn-ghost" onclick="goManual()">⌨️ '+(state.mode==="card"?"กรอกเบอร์โทรลูกค้าเอง":"พิมพ์โค้ดคูปองเอง")+'</button>'+
     '<p class="hint" style="margin-top:16px">ครั้งแรกเบราว์เซอร์จะขออนุญาตใช้กล้อง — กด "อนุญาต"</p>';
 }
 function renderManual(){
+  if(state.mode==="card"){
+    return '<h1>กรอกเบอร์โทรลูกค้า</h1><p class="sub">ใช้เมื่อสแกน QR บัตรไม่ได้</p>'+
+      '<div class="field"><input id="manualPhone" type="tel" inputmode="tel" placeholder="08x-xxx-xxxx" style="text-align:center" onkeydown="if(event.key===\'Enter\')submitManual()"></div>'+
+      '<button class="btn-primary" onclick="submitManual()">ค้นหาบัตร</button>'+
+      '<div style="height:10px"></div><button class="btn-ghost" onclick="goScan()">← กลับไปสแกน QR</button>';
+  }
   return '<h1>พิมพ์โค้ดคูปอง</h1><p class="sub">กรอกโค้ดบนคูปองของลูกค้า (เช่น FG-ABC123)</p>'+
     '<div class="field"><input id="manualCode" placeholder="FG-XXXXXX" style="text-transform:uppercase;text-align:center;font-family:ui-monospace,monospace;letter-spacing:2px" onkeydown="if(event.key===\'Enter\')submitManual()"></div>'+
     '<button class="btn-primary" onclick="submitManual()">ตรวจสอบคูปอง</button>'+
     '<div style="height:10px"></div><button class="btn-ghost" onclick="goScan()">← กลับไปสแกน QR</button>';
 }
 function couponKindChip(cp){
+  if(cp.kind==="mealVoucher") return '<span class="coupon-kind coffee">'+icCoffee()+' เมนูสุขภาพ Fast-track</span>';
   return cp.kind==="coffee"
     ? '<span class="coupon-kind coffee">'+icCoffee()+' คูปองกาแฟ</span>'
     : '<span class="coupon-kind">'+icFit()+' คูปองเทรน</span>';
 }
-function stChip(st){
+function stChip(st, isVoucher){
   return st==="active" ? '<span class="st-chip st-active">ใช้งานได้</span>'
-    : st==="redeemed" ? '<span class="st-chip st-redeemed">ถูกใช้ไปแล้ว</span>'
+    : st==="redeemed" ? '<span class="st-chip st-redeemed">'+(isVoucher?"ใช้ครบแล้ว":"ถูกใช้ไปแล้ว")+'</span>'
     : st==="cancelled" ? '<span class="st-chip st-redeemed">ถูกยกเลิก</span>'
     : '<span class="st-chip st-expired">หมดอายุ</span>';
 }
 function renderCouponDetail(){
   var cp=state.coupon||{};
   var usable = cp.status==="active";
+  var isVoucher = cp.kind==="mealVoucher";
   var html='<h1>รายละเอียดคูปอง</h1><p class="sub">ตรวจสอบก่อนยืนยันการใช้สิทธิ์</p>'+
     '<div class="card"><div class="coupon-face">'+couponKindChip(cp)+
     '<div class="coupon-name">'+escapeHtml(cp.title)+'</div>'+
     '<div class="coupon-code">'+escapeHtml(cp.code)+'</div>'+
     (cp.holderName?'<div class="coupon-meta">ผู้ถือ: '+escapeHtml(cp.holderName)+'</div>':"")+
+    (isVoucher?'<div class="coupon-meta">ใช้ไปแล้ว '+(cp.quotaUsed||0)+'/'+(cp.quotaTotal||0)+' สิทธิ์</div>':"")+
     '<div class="coupon-meta">ใช้ได้ถึง '+fmtDateY(cp.expiresAt)+'</div>'+
-    stChip(cp.status)+'</div>';
+    stChip(cp.status, isVoucher)+'</div>';
   if(usable){
-    if(cp.kind==="coffee"){
+    if(isVoucher){
+      html+='<button class="btn-primary" onclick="goPin()">✓ ใช้สิทธิ์เมนูสุขภาพ (ใส่ PIN พนักงาน)</button>';
+    } else if(cp.kind==="coffee"){
       html+='<button class="btn-primary" onclick="goPin()">✓ ยืนยันใช้สิทธิ์ (ใส่ PIN พนักงาน)</button>';
     } else {
       html+='<div class="err-box" style="margin-bottom:0">คูปองเทรนต้องให้โค้ชเป็นผู้ยืนยันด้วย PIN เทรนเนอร์</div>'+
         '<div style="height:10px"></div><button class="btn-primary" onclick="goPin()">ยืนยันด้วย PIN เทรนเนอร์</button>';
     }
   } else if(cp.status==="redeemed"){
-    html+='<div class="err-box" style="margin-bottom:0">คูปองนี้ถูกใช้ไปแล้ว'+(cp.redeemedAt?" เมื่อ "+fmtDT(cp.redeemedAt):"")+(cp.redeemedBy?" ("+escapeHtml(cp.redeemedBy)+")":"")+'</div>';
+    html+='<div class="err-box" style="margin-bottom:0">'+(isVoucher?"ใช้สิทธิ์ครบแล้ว":"คูปองนี้ถูกใช้ไปแล้ว")+(cp.redeemedAt?" เมื่อ "+fmtDT(cp.redeemedAt):"")+(cp.redeemedBy?" ("+escapeHtml(cp.redeemedBy)+")":"")+'</div>';
   } else {
     html+='<div class="err-box" style="margin-bottom:0">คูปองนี้ใช้ไม่ได้ (สถานะ: '+escapeHtml(cp.status)+')</div>';
   }
   html+='</div><button class="btn-ghost" onclick="goScan()">← สแกนใบใหม่</button>';
+  return html;
+}
+function renderCardDetail(){
+  var cl=(state.card&&state.card.client)||{};
+  var ms=(state.card&&state.card.milestones)||{m1:15,m2:30};
+  var stampCount=Number(cl.stampCount||0);
+  var afterQty=stampCount+state.qty;
+  var willHit = (stampCount<(ms.m1||15) && afterQty>=(ms.m1||15)) || (stampCount<(ms.m2||30) && afterQty>=(ms.m2||30));
+  var html='<h1>บัตรลูกค้า</h1><p class="sub">ตรวจสอบชื่อให้ตรงกับลูกค้าก่อนเพิ่มแต้ม</p>'+
+    '<div class="card" style="text-align:center">'+
+    '<div style="font-size:17px;font-weight:800">'+escapeHtml(cl.name||"-")+'</div>'+
+    '<div class="hint" style="margin-top:2px">'+escapeHtml(cl.phone||"")+'</div>'+
+    '<div style="font-size:13px;color:var(--ink-2);margin-top:10px">แต้มปัจจุบัน <b style="color:var(--accent-deep);font-size:16px">'+stampCount+'</b> แต้ม'+
+    (cl.lastStampDate?' · สแกนล่าสุด '+fmtDateY(cl.lastStampDate):"")+'</div>'+
+    '</div>';
+  html+='<div class="card">'+
+    '<div class="label" style="text-align:center;margin-bottom:10px">จำนวนแก้วที่ซื้อ</div>'+
+    '<div style="display:flex;align-items:center;justify-content:center;gap:18px">'+
+    '<button class="key" style="width:52px;height:52px;padding:0;font-size:24px" onclick="stepQty(-1)">−</button>'+
+    '<div style="font-size:32px;font-weight:800;min-width:50px;text-align:center">'+state.qty+'</div>'+
+    '<button class="key" style="width:52px;height:52px;padding:0;font-size:24px" onclick="stepQty(1)">+</button>'+
+    '</div>'+
+    '<div class="hint" style="margin-top:12px">แต้มหลังบันทึก: '+stampCount+' + '+state.qty+' = <b style="color:var(--ink)">'+afterQty+'</b> แต้ม'+
+    (willHit?' · 🎉 ครบเป้ารางวัลพอดี!':"")+
+    '</div></div>';
+  html+='<button class="btn-primary" onclick="goPin()">✓ ยืนยันเพิ่มแต้ม (ใส่ PIN พนักงาน)</button>'+
+    '<div style="height:10px"></div><button class="btn-ghost" onclick="goScan()">← สแกนบัตรใหม่</button>';
   return html;
 }
 function renderPin(){
@@ -291,14 +393,31 @@ function renderPin(){
   keys+='<button class="key wide" onclick="pinDel()">ลบ</button>';
   keys+='<button class="key" onclick="pinPress(\'0\')">0</button>';
   keys+='<button class="key wide" onclick="pinSubmit()" style="color:var(--accent-deep)">ยืนยัน</button>';
-  return '<h1>ใส่ PIN พนักงาน</h1><p class="sub">ยืนยันการใช้สิทธิ์: '+escapeHtml((state.coupon||{}).title||"")+'</p>'+
+  var subtitle = state.mode==="card"
+    ? "ยืนยันเพิ่ม "+state.qty+" แต้มให้ "+escapeHtml((state.card&&state.card.client&&state.card.client.name)||"")
+    : "ยืนยันการใช้สิทธิ์: "+escapeHtml((state.coupon||{}).title||"");
+  return '<h1>ใส่ PIN พนักงาน</h1><p class="sub">'+subtitle+'</p>'+
     '<div class="card"><div class="pin-dots">'+dots+'</div>'+
     '<div class="keypad">'+keys+'</div>'+
     (state.busy?'<p class="hint" style="margin-top:14px">กำลังยืนยัน...</p>':"")+
     '</div><button class="btn-ghost" onclick="goScan()">ยกเลิก</button>';
 }
 function renderResult(){
-  if(state.resultKind==="ok"){
+  if(state.resultKind==="stamp"){
+    var r=state.stampResult||{}, cl=r.client||{};
+    var hitMilestone = r.justHit15||r.justHit30;
+    var msLabel = r.justHit30 ? (r.milestones&&r.milestones.m2) : (r.milestones&&r.milestones.m1);
+    return '<div class="card" style="text-align:center;padding:26px 18px">'+
+      '<div class="result-ic '+(hitMilestone?"warn":"ok")+'">'+(hitMilestone?icStar():icCheck())+'</div>'+
+      '<div class="result-title">เพิ่มแต้มสำเร็จ!</div>'+
+      '<div class="result-sub">'+escapeHtml(cl.name||"")+' · แต้มสะสม '+(cl.stampCount!=null?cl.stampCount:"-")+' แต้ม</div>'+
+      (hitMilestone?('<div class="coupon-face" style="margin-top:18px;border-color:var(--amber)">'+
+        '<div style="font-weight:800;color:var(--amber);font-size:15px">🎉 ครบ '+escapeHtml(String(msLabel||""))+' แต้มแล้ว!</div>'+
+        '<div class="hint" style="margin-top:6px">แจ้งลูกค้าเปิดแอป Fit Gravity เพื่อเคลมรางวัลได้เลย</div></div>'):"")+
+      '<p class="hint" style="margin-top:14px">พนักงาน: '+escapeHtml(r.by||"")+'</p></div>'+
+      '<button class="btn-primary" onclick="goScan()">สแกนบัตรถัดไป</button>';
+  }
+  if(state.resultKind==="voucher"){
     var cp=state.coupon||{};
     return '<div class="card" style="text-align:center;padding:26px 18px">'+
       '<div class="result-ic ok">'+icCheck()+'</div>'+
@@ -307,7 +426,21 @@ function renderResult(){
       '<div class="coupon-face" style="margin-top:18px">'+couponKindChip(cp)+
       '<div class="coupon-code">'+escapeHtml(cp.code)+'</div>'+
       (cp.holderName?'<div class="coupon-meta">ผู้ถือ: '+escapeHtml(cp.holderName)+'</div>':"")+
-      '<div class="coupon-meta">ใช้เมื่อ '+fmtDT(cp.redeemedAt)+'</div></div>'+
+      '<div class="coupon-meta">ใช้ไปแล้ว '+(cp.quotaUsed||0)+'/'+(cp.quotaTotal||0)+' สิทธิ์</div></div>'+
+      '<p class="hint">มอบเมนูให้ลูกค้าได้เลย</p></div>'+
+      (cp.status==="active"?'<button class="btn-primary" onclick="useVoucherAgain()">ใช้อีกสิทธิ์ (สแกนใบเดิม)</button><div style="height:10px"></div>':"")+
+      '<button class="btn-ghost" onclick="goScan()">สแกนใบต่อไป</button>';
+  }
+  if(state.resultKind==="ok"){
+    var cp2=state.coupon||{};
+    return '<div class="card" style="text-align:center;padding:26px 18px">'+
+      '<div class="result-ic ok">'+icCheck()+'</div>'+
+      '<div class="result-title">ใช้สิทธิ์สำเร็จ!</div>'+
+      '<div class="result-sub">'+escapeHtml(cp2.title)+'</div>'+
+      '<div class="coupon-face" style="margin-top:18px">'+couponKindChip(cp2)+
+      '<div class="coupon-code">'+escapeHtml(cp2.code)+'</div>'+
+      (cp2.holderName?'<div class="coupon-meta">ผู้ถือ: '+escapeHtml(cp2.holderName)+'</div>':"")+
+      '<div class="coupon-meta">ใช้เมื่อ '+fmtDT(cp2.redeemedAt)+'</div></div>'+
       '<p class="hint">มอบสิทธิ์ให้ลูกค้าได้เลย · คูปองนี้ถูกทำเครื่องหมายว่าใช้แล้ว</p></div>'+
       '<button class="btn-primary" onclick="goScan()">สแกนใบต่อไป</button>';
   }
@@ -320,6 +453,7 @@ function renderResult(){
 }
 
 function icCheck(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'; }
+function icStar(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.6 5.9 6.4.6-4.8 4.3 1.4 6.3L12 17l-5.6 3.1 1.4-6.3-4.8-4.3 6.4-.6Z"/></svg>'; }
 function icX(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>'; }
 function icCoffee(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h11v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V8Z"/><path d="M16 9h2.5a2.5 2.5 0 0 1 0 5H16"/><path d="M8 3.4c-.5.7-.5 1.5 0 2.2M11 3.4c-.5.7-.5 1.5 0 2.2"/></svg>'; }
 function icFit(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M4 8.5v7M17.5 6.5v11M20 8.5v7M6.5 12h11"/></svg>'; }
