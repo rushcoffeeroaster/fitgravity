@@ -256,9 +256,10 @@ var state = {
   pin:null,
   data:null,                // adminGetAll bundle
   detail:null,              // adminGetClient bundle
-  detailTab:"info",         // info | program | weight | meals | coupons
+  detailTab:"info",         // info | card | program | weight | meals | coupons
   editDays:null,            // program editor working copy
   clientQuery:"",
+  articles:null,            // adminListArticles cache (loaded lazily on settings tab)
   busy:false, loginErr:""
 };
 
@@ -322,13 +323,13 @@ async function doLogin(){
   }catch(e){ state.loginErr=e.message; state.pin=null; }
   state.busy=false; render();
 }
-function doLogout(){ store.del("fg_admin_pin"); state.pin=null; state.data=null; state.detail=null; state.view="login"; render(); }
+function doLogout(){ store.del("fg_admin_pin"); state.pin=null; state.data=null; state.detail=null; state.articles=null; state.view="login"; render(); }
 async function reload(quiet){
   try{ state.data=await apiCall("adminGetAll", withPin()); document.getElementById("errorBox").innerHTML=""; if(!quiet) showToast("อัปเดตแล้ว"); }
   catch(e){ document.getElementById("errorBox").innerHTML='<div class="err-box">'+escapeHtml(e.message)+'</div>'; }
   render();
 }
-function setTab(t){ state.tab=t; state.detail=null; render(); window.scrollTo(0,0); }
+function setTab(t){ state.tab=t; state.detail=null; render(); window.scrollTo(0,0); if(t==="settings" && state.articles===null) loadArticles(); }
 
 /* ---------- client detail ---------- */
 async function openClient(id){
@@ -379,23 +380,31 @@ function renderLogin(){
 function renderHome(){
   var d=state.data||{}, k=d.kpi||{}, promo=d.promo||{};
   var pending=d.mealsPending||[];
+  var rewardsPending=d.rewardsPending||[];
   var html='<h1>แดชบอร์ด</h1><p class="sub">ภาพรวมลูกค้าและกิจกรรมของคุณ</p>'+
     '<div class="kpi-grid">'+
     '<div class="kpi accent"><div class="v">'+(k.activeClients||0)+'</div><div class="l">ลูกค้าที่ใช้งาน</div></div>'+
     '<div class="kpi"><div class="v">'+(k.sessionsThisMonth||0)+'</div><div class="l">เซสชันเดือนนี้</div></div>'+
     '<div class="kpi '+(pending.length?"red":"")+'"><div class="v">'+(k.mealsPending||0)+'</div><div class="l">อาหารรอคอมเมนต์</div></div>'+
     '<div class="kpi green"><div class="v">'+(k.couponsRedeemedThisMonth||0)+'</div><div class="l">คูปองใช้เดือนนี้</div></div>'+
+    '<div class="kpi accent"><div class="v">'+(k.stampsThisMonth||0)+'</div><div class="l">แต้มสะสมเดือนนี้</div></div>'+
+    '<div class="kpi '+(rewardsPending.length?"red":"")+'"><div class="v">'+(k.rewardsPending||0)+'</div><div class="l">รางวัลรอจัดโปรแกรม</div></div>'+
     '</div>';
   // quick action
   html+='<div class="card" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
     '<button class="btn-primary btn-sm" onclick="openAddClient()">+ เพิ่มลูกค้า</button>'+
     '<button class="btn-ghost btn-sm" onclick="setTab(\'meals\')">รีวิวอาหาร'+(pending.length?" ("+pending.length+")":"")+'</button>'+
     '<button class="btn-ghost btn-sm" onclick="setTab(\'coupons\')">ออกคูปอง</button></div>';
-  // promo status
-  html+='<h2>โปรโมชันลูกค้าร้านกาแฟ</h2><div class="card">'+
+  // rewards pending fulfillment
+  if (rewardsPending.length){
+    html+='<h2>รางวัลรอจัดโปรแกรม</h2>';
+    rewardsPending.forEach(function(r){ html+=rewardRow(r); });
+  }
+  // card program status
+  html+='<h2>โปรแกรมสะสมแต้ม</h2><div class="card">'+
     '<div style="display:flex;align-items:center;gap:10px">'+
     '<div style="flex:1"><div style="font-weight:700;font-size:14px">'+escapeHtml(promo.title||"-")+'</div>'+
-    '<div class="hint" style="margin-top:3px">'+(promo.enabled?'<span style="color:var(--green);font-weight:700">● เปิดรับสิทธิ์อยู่</span>':'<span style="color:var(--ink-3)">● ปิดรับสิทธิ์</span>')+' · อายุคูปอง '+escapeHtml(String(promo.days||30))+' วัน</div></div>'+
+    '<div class="hint" style="margin-top:3px">'+(promo.enabled?'<span style="color:var(--green);font-weight:700">● เปิดรับสมัครบัตรอยู่</span>':'<span style="color:var(--ink-3)">● ปิดรับสมัคร</span>')+' · ครบ '+escapeHtml(String(promo.milestone1Count||15))+'/'+escapeHtml(String(promo.milestone2Count||30))+' แต้ม รับรางวัล</div></div>'+
     '<button class="btn-ghost btn-sm" onclick="setTab(\'settings\')">จัดการ</button></div></div>';
   // recent pending meals preview
   if (pending.length){
@@ -409,6 +418,29 @@ function renderHome(){
     });
   }
   return html;
+}
+function milestoneLabel(m){
+  if(m==="15") return "รางวัล 15 แต้ม — เทรนฟรี 15 วัน";
+  if(m==="30") return "รางวัล 30 แต้ม — โปรแกรมออนไลน์ฟรี 1 เดือน";
+  if(m==="fasttrack") return "Fast-track — เทรนฟรี (ลูกค้าจ่ายแล้ว)";
+  return "รางวัล";
+}
+function rewardRow(r){
+  var detail=[];
+  if(r.location) detail.push(r.location==="gym"?"ในยิม":"ที่บ้าน");
+  if(r.goal) detail.push(r.goal);
+  if(r.note) detail.push(r.note);
+  return '<div class="mrev"><div class="mrev-head"><span class="mrev-name">'+escapeHtml(r.clientName||"ลูกค้า")+'</span>'+
+    '<span class="hint">'+fmtDT(r.createdAt)+'</span></div>'+
+    '<div style="font-size:13px;font-weight:700">'+milestoneLabel(r.milestone)+'</div>'+
+    (detail.length?'<div class="hint" style="margin-top:2px">'+escapeHtml(detail.join(" · "))+'</div>':"")+
+    '<div class="row" style="margin:9px 0 0"><button class="btn-primary btn-sm" onclick="fulfillReward(\''+escapeJs(r.rewardId)+'\')" '+(state.busy?"disabled":"")+' style="flex:1">✓ จัดโปรแกรมแล้ว</button></div></div>';
+}
+async function fulfillReward(rewardId){
+  state.busy=true; render();
+  try{ await apiCall("adminFulfillReward", withPin({ rewardId:rewardId })); await reload(true); showToast("บันทึกแล้ว"); }
+  catch(e){ showToast(e.message); }
+  state.busy=false; render();
 }
 
 /* ---------- CLIENTS ---------- */
@@ -448,8 +480,9 @@ function renderDetail(){
     '<div class="cl-avatar" style="width:48px;height:48px;font-size:18px">'+escapeHtml(initials(c.name))+'</div>'+
     '<div><h1 style="margin:0">'+escapeHtml(c.name)+'</h1><div class="hint">'+escapeHtml(c.phone)+' · '+escapeHtml(c.goal||"")+'</div></div></div>';
   html+='<div class="seg">'+
-    seg("info","ข้อมูล")+seg("program","โปรแกรม")+seg("weight","น้ำหนัก")+seg("meals","อาหาร")+seg("coupons","คูปอง")+'</div>';
+    seg("info","ข้อมูล")+seg("card","การ์ด")+seg("program","โปรแกรม")+seg("weight","น้ำหนัก")+seg("meals","อาหาร")+seg("coupons","คูปอง")+'</div>';
   if (state.detailTab==="info") html+=renderDetailInfo(b);
+  else if (state.detailTab==="card") html+=renderDetailCard(b);
   else if (state.detailTab==="program") html+=renderDetailProgram(b);
   else if (state.detailTab==="weight") html+=renderDetailWeight(b);
   else if (state.detailTab==="meals") html+=renderDetailMeals(b);
@@ -483,6 +516,69 @@ function renderDetailInfo(b){
   html+='<div class="row"><button class="btn-ghost" style="flex:1" onclick="openEditClient()">แก้ไขข้อมูล/แพ็กเกจ</button>'+
     '<button class="btn-ghost" style="flex:1" onclick="openIssueCoupon(\''+escapeJs(c.clientId)+'\')">ออกคูปอง</button></div>';
   return html;
+}
+
+/* ----- card (stamp loyalty) ----- */
+function renderDetailCard(b){
+  var c=b.client||{}, stamps=b.stamps||[], rewards=b.rewards||[], ms=b.milestones||{m1:15,m2:30};
+  var stampCount=Number(c.stampCount||0);
+  var html='<div class="card"><div class="pkg-strip"><div class="pkg-num">'+stampCount+'</div>'+
+    '<div style="flex:1"><div style="font-weight:700">แต้มสะสม</div>'+
+    '<div class="hint">ล่าสุด '+(c.lastStampDate?fmtDateY(c.lastStampDate):"ยังไม่เคยสแกน")+' · เป้า '+escapeHtml(String(ms.m1||15))+' / '+escapeHtml(String(ms.m2||30))+' แต้ม</div></div></div>'+
+    '<div class="row" style="margin-top:12px;margin-bottom:0">'+
+    '<button class="btn-primary" style="flex:1" onclick="adjustStamp(\''+escapeJs(c.clientId)+'\',1)" '+(state.busy?"disabled":"")+'>+1 แต้ม</button>'+
+    '<button class="btn-ghost" style="flex:1" onclick="openAdjustStamp(\''+escapeJs(c.clientId)+'\')">ปรับแต้ม...</button></div></div>';
+
+  html+='<div class="card">'+
+    '<div class="info-row"><span class="k">รางวัล 15 แต้ม</span><span class="v">'+milestoneStatusText(c.milestone15At, rewards, "15")+'</span></div>'+
+    '<div class="info-row"><span class="k">รางวัล 30 แต้ม</span><span class="v">'+milestoneStatusText(c.milestone30At, rewards, "30")+'</span></div>'+
+    '</div>';
+
+  html+='<button class="btn-ghost btn-block" onclick="openIssueFastTrack(\''+escapeJs(c.clientId)+'\')">ออกสิทธิ์ Fast-track ให้ลูกค้าคนนี้</button>';
+
+  html+='<h2>ประวัติการสแกน</h2>';
+  if(!stamps.length){ html+='<div class="empty">ยังไม่มีประวัติการสแกน</div>'; }
+  else{
+    html+='<div class="card">';
+    stamps.forEach(function(s){
+      html+='<div class="info-row"><span class="k">'+fmtDT(s.createdAt)+(s.staffBy?' · '+escapeHtml(s.staffBy):"")+(s.note?' · '+escapeHtml(s.note):"")+'</span>'+
+        '<span class="v" style="color:'+(Number(s.qty)<0?"var(--red)":"var(--green)")+'">'+(Number(s.qty)>0?"+":"")+s.qty+'</span></div>';
+    });
+    html+='</div>';
+  }
+  return html;
+}
+function milestoneStatusText(claimedAt, rewards, key){
+  if(!claimedAt) return '<span style="color:var(--ink-3)">ยังไม่ครบ/ยังไม่เคลม</span>';
+  var matches=rewards.filter(function(r){ return String(r.milestone)===String(key); });
+  var rw=matches.length?matches[0]:null;
+  if(rw && rw.status==="fulfilled") return '<span style="color:var(--green)">จัดโปรแกรมแล้ว ('+fmtDateY(claimedAt)+')</span>';
+  return '<span style="color:var(--amber)">รอจัดโปรแกรม ('+fmtDateY(claimedAt)+')</span>';
+}
+async function adjustStamp(clientId, delta){
+  state.busy=true; render();
+  try{
+    state.detail=await apiCall("adminAdjustStamp", withPin({ clientId:clientId, delta:delta, note:"เพิ่มด่วนจากแอดมิน" }));
+    showToast(delta>0?"เพิ่มแต้มแล้ว":"ปรับแต้มแล้ว");
+    reload(true);
+  }catch(e){ showToast(e.message); }
+  state.busy=false; render();
+}
+function openAdjustStamp(clientId){
+  openOverlay('<h3>ปรับแต้มสะสม</h3>'+
+    '<div class="field"><label class="label">จำนวนที่ต้องการปรับ (ใส่ติดลบเพื่อหักแต้ม)</label><input id="as-delta" type="number" inputmode="numeric" placeholder="เช่น 1 หรือ -1"></div>'+
+    '<div class="field"><label class="label">หมายเหตุ</label><input id="as-note" placeholder="เช่น สแกนพลาด แก้ไขให้"></div>'+
+    '<div class="modal-actions"><button class="btn-ghost" onclick="closeOverlay()">ยกเลิก</button>'+
+    '<button class="btn-primary" onclick="submitAdjustStamp(\''+escapeJs(clientId)+'\')">บันทึก</button></div>');
+}
+async function submitAdjustStamp(clientId){
+  var delta=Number(val("as-delta"));
+  if(!delta){ showToast("กรอกจำนวนที่ต้องการปรับ"); return; }
+  var note=val("as-note");
+  try{
+    state.detail=await apiCall("adminAdjustStamp", withPin({ clientId:clientId, delta:delta, note:note }));
+    closeOverlay(); reload(true); showToast("ปรับแต้มแล้ว");
+  }catch(e){ showToast(e.message); }
 }
 
 /* ----- program editor ----- */
@@ -673,9 +769,10 @@ function renderCouponsTab(){
   var d=state.data||{}, coupons=d.coupons||[];
   var active=coupons.filter(function(c){ return c.status==="active"; });
   var others=coupons.filter(function(c){ return c.status!=="active"; });
-  var html='<div style="display:flex;align-items:center;justify-content:space-between"><h1>คูปอง</h1>'+
-    '<button class="btn-primary btn-sm" onclick="openIssueCoupon()">+ ออกคูปอง</button></div>'+
-    '<p class="sub">คูปองกาแฟ (ให้ลูกค้าสแกนที่ร้าน) และคูปองเทรน</p>';
+  var html='<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap"><h1 style="margin:0">คูปอง</h1>'+
+    '<div style="display:flex;gap:8px"><button class="btn-ghost btn-sm" onclick="openIssueFastTrack()">+ Fast-track</button>'+
+    '<button class="btn-primary btn-sm" onclick="openIssueCoupon()">+ ออกคูปอง</button></div></div>'+
+    '<p class="sub">คูปองกาแฟ/เทรน และสิทธิ์เมนูสุขภาพ Fast-track</p>';
   html+='<div class="kpi-grid"><div class="kpi green"><div class="v">'+active.length+'</div><div class="l">ใช้งานได้</div></div>'+
     '<div class="kpi"><div class="v">'+(d.kpi&&d.kpi.couponsRedeemedThisMonth||0)+'</div><div class="l">ใช้แล้วเดือนนี้</div></div></div>';
   html+='<h2>ใช้งานได้</h2>';
@@ -688,14 +785,20 @@ function renderCouponsTab(){
   return html;
 }
 function adminTicket(cp){
+  var isVoucher = cp.kind==="mealVoucher";
   var stChip = cp.status==="active" ? '<span class="st-chip st-active">ใช้ได้</span>'
-    : cp.status==="redeemed" ? '<span class="st-chip st-redeemed">ใช้แล้ว</span>'
+    : cp.status==="redeemed" ? '<span class="st-chip st-redeemed">'+(isVoucher?"ใช้ครบแล้ว":"ใช้แล้ว")+'</span>'
     : cp.status==="cancelled" ? '<span class="st-chip st-redeemed">ยกเลิก</span>'
     : '<span class="st-chip st-expired">หมดอายุ</span>';
-  var sub = cp.status==="redeemed" ? "ใช้เมื่อ "+fmtDT(cp.redeemedAt)+(cp.redeemedBy?" · "+escapeHtml(cp.redeemedBy):"")
-    : (cp.holderName?escapeHtml(cp.holderName)+" · ":"")+"ถึง "+fmtDateY(cp.expiresAt);
+  var sub;
+  if(isVoucher){
+    sub = (cp.holderName?escapeHtml(cp.holderName)+" · ":"")+"ใช้ไป "+(cp.quotaUsed||0)+"/"+(cp.quotaTotal||0)+" สิทธิ์ · ถึง "+fmtDateY(cp.expiresAt);
+  } else {
+    sub = cp.status==="redeemed" ? "ใช้เมื่อ "+fmtDT(cp.redeemedAt)+(cp.redeemedBy?" · "+escapeHtml(cp.redeemedBy):"")
+      : (cp.holderName?escapeHtml(cp.holderName)+" · ":"")+"ถึง "+fmtDateY(cp.expiresAt);
+  }
   var html='<div class="ticket'+(cp.status!=="active"?" dim":"")+'"><div class="ticket-top">'+
-    '<div class="ticket-ic'+(cp.kind==="coffee"?" coffee":"")+'">'+(cp.kind==="coffee"?icCoffee():icFit())+'</div>'+
+    '<div class="ticket-ic'+(cp.kind==="coffee"||isVoucher?" coffee":"")+'">'+(cp.kind==="coffee"||isVoucher?icCoffee():icFit())+'</div>'+
     '<div style="flex:1;min-width:0"><div class="ticket-title">'+escapeHtml(cp.title)+'</div><div class="ticket-sub">'+sub+'</div>'+
     '<div class="code-big" style="margin-top:3px">'+escapeHtml(cp.code)+'</div></div>'+
     '<div style="text-align:right">'+stChip+
@@ -712,27 +815,54 @@ async function cancelCoupon(code){
 
 /* ---------- SETTINGS ---------- */
 function renderSettings(){
-  var d=state.data||{}, promo=d.promo||{};
-  var html='<h1>ตั้งค่า</h1><p class="sub">โปรโมชันลูกค้าร้านกาแฟ และ QR สำหรับพิมพ์วางที่ร้าน</p>';
+  var d=state.data||{}, promo=d.promo||{}, cs=d.cardSettings||{};
+  var html='<h1>ตั้งค่า</h1><p class="sub">โปรแกรมสะสมแต้ม บทความ และ QR สำหรับพิมพ์วางที่ร้าน</p>';
   html+='<div class="card"><div style="display:flex;align-items:center;gap:12px;margin-bottom:4px">'+
-    '<div style="flex:1"><div style="font-weight:700;font-size:14px">เปิดรับสิทธิ์โปรโม</div>'+
-    '<div class="hint">ให้ลูกค้าสแกน QR แล้วกรอกชื่อ+เบอร์ รับคูปองทดลองเทรน</div></div>'+
+    '<div style="flex:1"><div style="font-weight:700;font-size:14px">เปิดรับสมัครบัตรสะสมแต้ม</div>'+
+    '<div class="hint">ให้ลูกค้าสแกน QR แล้วกรอกชื่อ+เบอร์+ตั้ง PIN สมัครบัตรได้เอง</div></div>'+
     '<div class="toggle'+(promo.enabled?" on":"")+'" onclick="togglePromo('+(promo.enabled?"false":"true")+')"></div></div></div>';
-  html+='<div class="card"><div class="field"><label class="label">ชื่อโปรโมชัน</label>'+
-    '<input id="pmTitle" value="'+escapeHtml(promo.title||"")+'" placeholder="เช่น ทดลองเทรนฟรี 1 ครั้ง"></div>'+
+  html+='<div class="card"><div class="field"><label class="label">ชื่อโปรแกรม</label>'+
+    '<input id="pmTitle" value="'+escapeHtml(promo.title||"")+'" placeholder="เช่น สะสมแก้ว ลุ้นโปรแกรมเทรนฟรี"></div>'+
     '<div class="field"><label class="label">รายละเอียด</label>'+
-    '<textarea id="pmDesc" placeholder="อธิบายสิทธิ์และเงื่อนไข">'+escapeHtml(promo.desc||"")+'</textarea></div>'+
-    '<div class="field"><label class="label">อายุคูปอง (วัน)</label>'+
-    '<input id="pmDays" type="number" inputmode="numeric" value="'+escapeHtml(String(promo.days||30))+'"></div>'+
-    '<button class="btn-primary btn-block" onclick="savePromo()" '+(state.busy?"disabled":"")+'>บันทึกโปรโมชัน</button></div>';
+    '<textarea id="pmDesc" placeholder="อธิบายเงื่อนไขการสะสมแต้ม">'+escapeHtml(promo.desc||"")+'</textarea></div>'+
+    '<button class="btn-primary btn-block" onclick="savePromo()" '+(state.busy?"disabled":"")+'>บันทึก</button></div>';
+
+  html+='<h2>ตั้งค่าโปรแกรมสะสมแต้ม</h2><div class="card">'+
+    '<div class="row"><div style="flex:1"><label class="label">แต้มครบรอบ 1 (เทรนฟรี 15 วัน)</label><input id="cs-m1" type="number" inputmode="numeric" value="'+escapeHtml(String(cs.milestone1Count||15))+'"></div>'+
+    '<div style="flex:1"><label class="label">แต้มครบรอบ 2 (ออนไลน์ 1 เดือน)</label><input id="cs-m2" type="number" inputmode="numeric" value="'+escapeHtml(String(cs.milestone2Count||30))+'"></div></div>'+
+    '<div class="row"><div style="flex:1"><label class="label">ราคา Fast-track (บาท)</label><input id="cs-price" type="number" inputmode="numeric" value="'+escapeHtml(String(cs.fastTrackPrice||1990))+'"></div>'+
+    '<div style="flex:1"><label class="label">จำนวนเดือนเทรนฟรี</label><input id="cs-months" type="number" inputmode="numeric" value="'+escapeHtml(String(cs.fastTrackMonths||1))+'"></div></div>'+
+    '<div class="row"><div style="flex:1"><label class="label">โควตาเมนูสุขภาพ (สิทธิ์/เดือน)</label><input id="cs-mealq" type="number" inputmode="numeric" value="'+escapeHtml(String(cs.fastTrackMealQuota||30))+'"></div>'+
+    '<div style="flex:1"><label class="label">มูลค่าสูงสุด/สิทธิ์ (บาท)</label><input id="cs-mealv" type="number" inputmode="numeric" value="'+escapeHtml(String(cs.fastTrackMealValue||85))+'"></div></div>'+
+    '<button class="btn-primary btn-block" onclick="saveCardSettings()" '+(state.busy?"disabled":"")+'>บันทึกการตั้งค่า</button></div>';
+
   // QR poster
-  var promoUrl = ""; try{ promoUrl=new URL("fit.html?promo=1", location.href).href; }catch(e){ promoUrl="fit.html?promo=1"; }
+  var promoUrl = ""; try{ promoUrl=new URL("fit.html?register=1", location.href).href; }catch(e){ promoUrl="fit.html?register=1"; }
   html+='<h2>QR สำหรับวางที่ร้าน</h2><div class="card print-area" style="text-align:center">'+
-    '<div style="font-weight:800;font-size:15px;letter-spacing:.5px">รับสิทธิ์ทดลองเทรนฟรี</div>'+
-    '<div class="hint" style="margin-top:2px">สแกนแล้วกรอกชื่อ-เบอร์ รับคูปองทันที</div>'+
+    '<div style="font-weight:800;font-size:15px;letter-spacing:.5px">สมัครบัตรสะสมแต้มฟรี</div>'+
+    '<div class="hint" style="margin-top:2px">สแกน กรอกชื่อ-เบอร์ ตั้ง PIN รับ QR การ์ดทันที</div>'+
     '<div class="qr-print" data-qr="'+escapeHtml(promoUrl)+'" data-qrsize="440"></div>'+
     '<div class="hint" style="word-break:break-all">'+escapeHtml(promoUrl)+'</div>'+
     '<button class="btn-ghost btn-block no-print" style="margin-top:12px" onclick="window.print()">พิมพ์ / บันทึกเป็น PDF</button></div>';
+
+  // articles
+  html+='<h2>บทความ/เทคนิครายสัปดาห์</h2>'+
+    '<button class="btn-primary btn-sm" onclick="openSaveArticle()" style="margin-bottom:10px">+ เพิ่มบทความ</button>';
+  if(state.articles===null){
+    html+='<p class="hint">กำลังโหลด...</p>';
+  } else if(!state.articles.length){
+    html+='<div class="empty" style="padding:24px">ยังไม่มีบทความ เพิ่มบทความแรกได้เลย</div>';
+  } else {
+    state.articles.forEach(function(a){
+      html+='<div class="mrev"><div class="mrev-head"><span class="mrev-name">'+escapeHtml(a.title)+'</span>'+
+        (a.mood?'<span class="mrev-type">'+escapeHtml(a.mood)+'</span>':"")+'</div>'+
+        '<div class="hint">เผยแพร่ '+fmtDateY(a.publishDate)+'</div>'+
+        '<div class="row" style="margin:9px 0 0">'+
+        '<button class="btn-ghost btn-sm" style="flex:1" onclick="openSaveArticle(\''+escapeJs(a.articleId)+'\')">แก้ไข</button>'+
+        '<button class="btn-danger btn-sm" style="flex:1" onclick="deleteArticle(\''+escapeJs(a.articleId)+'\')">ลบ</button></div></div>';
+    });
+  }
+
   html+='<div class="card"><div style="font-weight:700;margin-bottom:6px">ลิงก์แอปลูกค้า</div>'+
     '<div class="hint" style="word-break:break-all">'+escapeHtml((function(){try{return new URL("fit.html",location.href).href;}catch(e){return "fit.html";}})())+'</div></div>';
   html+='<button class="btn-ghost btn-block" onclick="doLogout()">ออกจากระบบ</button>';
@@ -740,18 +870,56 @@ function renderSettings(){
 }
 async function togglePromo(on){
   state.busy=true;
-  try{ var r=await apiCall("adminSetPromo", withPin({ enabled:on })); state.data.promo=r.promo; showToast(on==="true"||on===true?"เปิดรับสิทธิ์แล้ว":"ปิดรับสิทธิ์แล้ว"); }
+  try{ var r=await apiCall("adminSetPromo", withPin({ enabled:on })); state.data.promo=r.promo; showToast(on==="true"||on===true?"เปิดรับสมัครแล้ว":"ปิดรับสมัครแล้ว"); }
   catch(e){ showToast(e.message); }
   state.busy=false; render();
 }
 async function savePromo(){
   var title=document.getElementById("pmTitle").value.trim();
   var desc=document.getElementById("pmDesc").value.trim();
-  var days=Number(document.getElementById("pmDays").value)||30;
   state.busy=true; render();
-  try{ var r=await apiCall("adminSetPromo", withPin({ title:title, desc:desc, days:days })); state.data.promo=r.promo; showToast("บันทึกโปรโมชันแล้ว"); }
+  try{ var r=await apiCall("adminSetPromo", withPin({ title:title, desc:desc })); state.data.promo=r.promo; showToast("บันทึกแล้ว"); }
   catch(e){ showToast(e.message); }
   state.busy=false; render();
+}
+async function saveCardSettings(){
+  var p={ milestone1Count:val("cs-m1"), milestone2Count:val("cs-m2"), fastTrackPrice:val("cs-price"),
+    fastTrackMonths:val("cs-months"), fastTrackMealQuota:val("cs-mealq"), fastTrackMealValue:val("cs-mealv") };
+  state.busy=true; render();
+  try{ var r=await apiCall("adminSetCardSettings", withPin(p)); state.data.cardSettings=r.cardSettings; showToast("บันทึกการตั้งค่าแล้ว"); }
+  catch(e){ showToast(e.message); }
+  state.busy=false; render();
+}
+async function loadArticles(){
+  try{ var r=await apiCall("adminListArticles", withPin()); state.articles=r.articles; render(); }
+  catch(e){ showToast(e.message); }
+}
+function openSaveArticle(articleId){
+  var a=null;
+  if(articleId && state.articles){ state.articles.forEach(function(x){ if(x.articleId===articleId) a=x; }); }
+  var idAttr = a ? ("'"+escapeJs(a.articleId)+"'") : "null";
+  openOverlay('<h3>'+(a?"แก้ไขบทความ":"เพิ่มบทความใหม่")+'</h3>'+
+    '<div class="field"><label class="label">หัวข้อ *</label><input id="ar-title" value="'+escapeHtml(a?a.title:"")+'" placeholder="ชื่อบทความ"></div>'+
+    '<div class="row"><div style="flex:1"><label class="label">คำเปิด/mood (ไม่ใส่ก็ได้)</label><input id="ar-mood" value="'+escapeHtml(a?a.mood:"")+'" placeholder="เช่น CALM, POWER, REAL"></div>'+
+    '<div style="flex:1"><label class="label">วันที่เผยแพร่</label><input id="ar-date" type="date" value="'+escapeHtml(a?a.publishDate:todayISO())+'"></div></div>'+
+    '<div class="field"><label class="label">เนื้อหา *</label><textarea id="ar-body" style="min-height:140px" placeholder="เนื้อหาบทความ/เทคนิค">'+escapeHtml(a?a.body:"")+'</textarea></div>'+
+    '<p class="hint" style="margin-bottom:10px">ลูกค้าจะเห็นบทความนี้ได้ก็ต่อเมื่อสแกนซื้อเครื่องดื่มตั้งแต่วันที่เผยแพร่เป็นต้นไป</p>'+
+    '<div class="modal-actions"><button class="btn-ghost" onclick="closeOverlay()">ยกเลิก</button>'+
+    '<button class="btn-primary" onclick="submitSaveArticle('+idAttr+')">บันทึก</button></div>');
+}
+async function submitSaveArticle(articleId){
+  var art={ title:val("ar-title"), body:val("ar-body"), mood:val("ar-mood"), publishDate:val("ar-date") };
+  if(articleId) art.articleId=articleId;
+  if(!art.title||!art.body){ showToast("กรอกหัวข้อและเนื้อหาให้ครบ"); return; }
+  try{
+    var r=await apiCall("adminSaveArticle", withPin({ article:art }));
+    state.articles=r.articles; closeOverlay(); showToast("บันทึกบทความแล้ว"); render();
+  }catch(e){ showToast(e.message); }
+}
+async function deleteArticle(articleId){
+  if(!confirm("ลบบทความนี้?")) return;
+  try{ var r=await apiCall("adminDeleteArticle", withPin({ articleId:articleId })); state.articles=r.articles; showToast("ลบแล้ว"); render(); }
+  catch(e){ showToast(e.message); }
 }
 
 /* ---------- MODALS ---------- */
@@ -857,15 +1025,40 @@ async function submitIssueCoupon(){
   }catch(e){ showToast(e.message); }
 }
 function showCouponIssued(cp){
-  openOverlay('<h3>ออกคูปองสำเร็จ</h3>'+
+  var isVoucher=cp.kind==="mealVoucher";
+  openOverlay('<h3>ออก'+(isVoucher?"สิทธิ์ Fast-track":"คูปอง")+'สำเร็จ</h3>'+
     '<div style="text-align:center">'+
     '<div style="font-weight:700;font-size:14px;margin-bottom:4px">'+escapeHtml(cp.title)+'</div>'+
-    '<div class="hint">'+escapeHtml(cp.holderName||"")+' · ใช้ได้ถึง '+fmtDateY(cp.expiresAt)+'</div>'+
+    '<div class="hint">'+escapeHtml(cp.holderName||"")+(isVoucher?' · ใช้ได้ '+(cp.quotaTotal||0)+' สิทธิ์':"")+' · ใช้ได้ถึง '+fmtDateY(cp.expiresAt)+'</div>'+
     '<div class="qr-print" data-qr="'+escapeHtml(redeemUrl(cp.code))+'" data-qrsize="420"></div>'+
     '<div class="code-big" style="font-size:19px">'+escapeHtml(cp.code)+'</div>'+
-    '<p class="hint" style="margin-top:8px">คูปองจะไปโผล่ในแอปลูกค้าอัตโนมัติ · ลูกค้าเปิดสแกนที่ร้านได้เลย</p></div>'+
+    '<p class="hint" style="margin-top:8px">'+(isVoucher?"สิทธิ์จะไปโผล่ในแอปลูกค้าอัตโนมัติ · และคิวเทรนฟรีถูกเพิ่มไว้ในรายการ \"รางวัลรอจัดโปรแกรม\" ที่แดชบอร์ดแล้ว":"คูปองจะไปโผล่ในแอปลูกค้าอัตโนมัติ · ลูกค้าเปิดสแกนที่ร้านได้เลย")+'</p></div>'+
     '<div class="modal-actions"><button class="btn-primary btn-block" onclick="closeOverlay()">เสร็จสิ้น</button></div>');
   paintQRs();
+}
+
+function openIssueFastTrack(clientId){
+  var clients=(state.data&&state.data.clients)||[];
+  var opts=clients.map(function(c){ return '<option value="'+escapeHtml(c.clientId)+'"'+(String(clientId)===String(c.clientId)?" selected":"")+'>'+escapeHtml(c.name)+'</option>'; }).join("");
+  var cs=(state.data&&state.data.cardSettings)||{};
+  openOverlay('<h3>ออกสิทธิ์ Fast-track</h3>'+
+    '<p class="hint" style="margin-bottom:12px">ใช้เมื่อลูกค้าจ่ายเงิน '+num1(cs.fastTrackPrice||1990)+' บาทแล้วที่หน้าร้าน (เงินสด/โอน) — ระบบจะออกสิทธิ์เมนูสุขภาพ '+(cs.fastTrackMealQuota||30)+' ครั้ง/เดือน และตั้งคิวเทรนฟรี '+(cs.fastTrackMonths||1)+' เดือนให้อัตโนมัติ</p>'+
+    '<div class="field"><label class="label">ลูกค้า</label><select id="ft-client">'+opts+'</select></div>'+
+    '<div class="modal-actions"><button class="btn-ghost" onclick="closeOverlay()">ยกเลิก</button>'+
+    '<button class="btn-primary" onclick="submitIssueFastTrack()">ยืนยันว่ารับเงินแล้ว ออกสิทธิ์</button></div>');
+}
+async function submitIssueFastTrack(){
+  var clientId=val("ft-client");
+  if(!clientId){ showToast("เลือกลูกค้าก่อน"); return; }
+  try{
+    var r=await apiCall("adminIssueFastTrack", withPin({ clientId:clientId }));
+    closeOverlay();
+    if(state.detail && String(state.detail.client.clientId)===String(clientId)){
+      state.detail=await apiCall("adminGetClient", withPin({ clientId:clientId }));
+    }
+    reload(true);
+    showCouponIssued(r.coupon);
+  }catch(e){ showToast(e.message); }
 }
 
 /* icons */
