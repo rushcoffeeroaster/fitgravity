@@ -111,6 +111,10 @@ textarea{ resize:vertical; min-height:64px; }
 .ex-row.checked .ex-name{ text-decoration:line-through; color:var(--ink-3); }
 .ex-name{ font-size:14px; font-weight:600; }
 .ex-detail{ font-size:12px; color:var(--ink-2); margin-top:1px; }
+.ex-media-row{ display:flex; align-items:center; gap:8px; margin-top:7px; flex-wrap:wrap; }
+.ex-thumb{ width:44px; height:44px; border-radius:8px; object-fit:cover; border:1px solid var(--line-strong); cursor:pointer; flex-shrink:0; }
+.ex-video-btn{ display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:700; color:var(--accent-deep); background:var(--accent-soft); border-radius:999px; padding:5px 11px; text-decoration:none; }
+.ex-video-btn svg{ width:13px; height:13px; }
 .day-card{ border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); margin-bottom:9px; box-shadow:var(--shadow-sm); overflow:hidden; }
 .day-head{ display:flex; align-items:center; gap:9px; padding:13px 15px; cursor:pointer; }
 .day-head .dn{ font-size:14px; font-weight:800; flex:1; min-width:0; }
@@ -186,12 +190,17 @@ textarea{ resize:vertical; min-height:64px; }
 .stamp-cap{ font-size:12px; color:var(--ink-2); font-weight:700; margin-top:4px; }
 .mood-tag{ display:inline-flex; align-items:center; padding:3px 10px; border-radius:999px; font-size:10px; font-weight:800; letter-spacing:1.5px; background:var(--accent-soft); color:var(--accent-deep); text-transform:uppercase; flex-shrink:0; }
 .article-card{ border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); padding:14px 15px; margin-bottom:9px; box-shadow:var(--shadow-sm); cursor:pointer; }
+.article-photo{ width:100%; max-height:160px; object-fit:cover; border-radius:10px; margin-bottom:10px; display:block; }
 .article-card.locked{ opacity:.55; cursor:default; }
 .article-lock{ display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--ink-3); margin-top:6px; font-weight:600; }
 .article-lock svg{ width:14px; height:14px; flex-shrink:0; }
 .ft-card{ border:1.5px dashed var(--line-strong); border-radius:var(--radius); background:var(--surface-2); padding:14px 15px; margin-bottom:11px; }
 .ms-row{ padding:12px 0; border-bottom:1px dashed var(--line); }
 .ms-row:last-child{ border-bottom:none; padding-bottom:2px; }
+.coach-photo{ width:92px; height:92px; border-radius:50%; object-fit:cover; border:2px solid var(--line-strong); box-shadow:var(--shadow-sm); }
+.coach-photo-ph{ display:grid; place-items:center; background:var(--accent-soft); color:var(--accent-deep); margin:0 auto; }
+.coach-photo-ph svg{ width:38px; height:38px; }
+.coach-cert-thumb{ width:64px; height:64px; border-radius:8px; object-fit:cover; border:1px solid var(--line-strong); cursor:pointer; }
 </style>
 </head>
 <body id="bodyEl">
@@ -576,10 +585,15 @@ function renderItems(p){
   items.forEach(function(it,i){
     var key=todayISO()+":"+p.day+":"+i, ck=!!state.checks[key];
     var detail=[it.sets?it.sets+" เซ็ต":"", it.reps?it.reps:"", it.rest?"พัก "+it.rest:""].filter(Boolean).join(" · ");
+    var hasMedia = !!(it.photoUrl || it.videoUrl);
     html+='<label class="ex-row'+(ck?" checked":"")+'" id="ex-'+key+'">'+
       '<input type="checkbox" class="ex-check" '+(ck?"checked":"")+' onchange="toggleCheck(\''+key+'\', this.checked)">'+
-      '<div><div class="ex-name">'+escapeHtml(it.name||"")+'</div>'+
+      '<div style="flex:1;min-width:0"><div class="ex-name">'+escapeHtml(it.name||"")+'</div>'+
       (detail?'<div class="ex-detail">'+escapeHtml(detail)+'</div>':"")+
+      (hasMedia?'<div class="ex-media-row">'+
+        (it.photoUrl?'<img class="ex-thumb" loading="lazy" src="'+escapeHtml(it.photoUrl)+'" onclick="event.preventDefault();openPhoto(\''+escapeJs(it.photoUrl)+'\')" alt="'+escapeHtml(it.name||"")+'">':"")+
+        (it.videoUrl?'<a class="ex-video-btn" href="'+escapeHtml(it.videoUrl)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">'+icPlay()+'ดูวิดีโอท่านี้</a>':"")+
+        '</div>':"")+
       '</div></label>';
   });
   return html;
@@ -807,10 +821,11 @@ function renderArticles(articles){
   articles.forEach(function(a){
     if(a.unlocked){
       html+='<div class="article-card" onclick="openArticle(\''+escapeJs(a.articleId)+'\')">'+
+        (a.photoUrl?'<img class="article-photo" loading="lazy" src="'+escapeHtml(a.photoUrl)+'" alt="'+escapeHtml(a.title)+'">':"")+
         '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'+
         '<div style="font-size:14px;font-weight:800;line-height:1.4">'+escapeHtml(a.title)+'</div>'+
         (a.mood?'<span class="mood-tag">'+escapeHtml(a.mood)+'</span>':"")+
-        '</div><div class="hint" style="margin-top:5px">อัปเดต '+fmtDateY(a.publishDate)+'</div></div>';
+        '</div><div class="hint" style="margin-top:5px">อัปเดต '+fmtDateY(a.publishDate)+(a.videoUrl?' · '+icPlay()+' มีคลิปประกอบ':"")+'</div></div>';
     } else {
       html+='<div class="article-card locked">'+
         '<div style="font-size:14px;font-weight:800;line-height:1.4;color:var(--ink-2)">'+escapeHtml(a.title)+'</div>'+
@@ -827,8 +842,10 @@ function openArticle(articleId){
     (a.mood?'<div class="mood-tag" style="margin-bottom:8px">'+escapeHtml(a.mood)+'</div>':"")+
     '<div style="font-size:17px;font-weight:800;line-height:1.4;margin-bottom:4px">'+escapeHtml(a.title)+'</div>'+
     '<div class="hint" style="margin-bottom:12px">อัปเดต '+fmtDateY(a.publishDate)+'</div>'+
+    (a.photoUrl?'<img class="full" style="margin-bottom:12px" src="'+escapeHtml(a.photoUrl)+'" alt="'+escapeHtml(a.title)+'">':"")+
     '<div style="font-size:14px;line-height:1.75;white-space:pre-wrap;word-break:break-word">'+escapeHtml(a.body)+'</div>'+
-    '<button class="btn-ghost btn-block" onclick="closeOverlay()" style="margin-top:14px">ปิด</button>'
+    (a.videoUrl?'<a class="btn-ghost btn-block" style="margin-top:12px;display:flex;align-items:center;justify-content:center;gap:7px;text-decoration:none" href="'+escapeHtml(a.videoUrl)+'" target="_blank" rel="noopener">'+icPlay()+'ดูคลิปประกอบ</a>':"")+
+    '<button class="btn-ghost btn-block" onclick="closeOverlay()" style="margin-top:8px">ปิด</button>'
   );
 }
 
@@ -966,9 +983,29 @@ function renderProfile(){
     '<div class="info-row"><span class="k">แพ็กเกจ</span><span class="v">'+escapeHtml(c.packageName||"-")+'</span></div>'+
     '<div class="info-row"><span class="k">สมาชิกตั้งแต่</span><span class="v">'+fmtDateY(String(c.createdAt||"").slice(0,10))+'</span></div>'+
     '</div>'+
+    renderCoachSection(d.trainerInfo)+
     '<div class="card"><p class="hint" style="margin:0">ต้องการแก้ไขข้อมูล เปลี่ยน PIN หรือต่อแพ็กเกจ — แจ้งโค้ชในช่อง "คุยกับโค้ช" ได้เลย</p></div>'+
     '<button class="btn-ghost btn-block" onclick="doLogout()">ออกจากระบบ</button>'+
     '<p class="hint" style="text-align:center;margin-top:16px;letter-spacing:1px">FIT GRAVITY · TRAINING ONLINE</p>';
+}
+function renderCoachSection(ti){
+  ti=ti||{};
+  if(!ti.name && !ti.bio && !ti.photoUrl && !(ti.certUrls&&ti.certUrls.length)) return "";
+  var certs=ti.certUrls||[];
+  var html='<h2>เกี่ยวกับโค้ช</h2><div class="card" style="text-align:center">'+
+    (ti.photoUrl?'<img class="coach-photo" src="'+escapeHtml(ti.photoUrl)+'" alt="'+escapeHtml(ti.name||"โค้ช")+'">':'<div class="coach-photo coach-photo-ph">'+icFit()+'</div>')+
+    (ti.name?'<div style="font-size:15.5px;font-weight:800;margin-top:10px">'+escapeHtml(ti.name)+'</div>':"")+
+    (ti.bio?'<div class="hint" style="margin-top:7px;text-align:left;line-height:1.65;white-space:pre-wrap;word-break:break-word">'+escapeHtml(ti.bio)+'</div>':"");
+  if(certs.length){
+    html+='<div style="margin-top:12px;text-align:left"><label class="label" style="display:flex;align-items:center;gap:5px">'+icCert()+'ใบรับรอง / วุฒิบัตร</label>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">';
+    certs.forEach(function(u){
+      html+='<img class="coach-cert-thumb" loading="lazy" src="'+escapeHtml(u)+'" onclick="openPhoto(\''+escapeJs(u)+'\')" alt="ใบรับรอง">';
+    });
+    html+='</div></div>';
+  }
+  html+='</div>';
+  return html;
 }
 
 /* ----- icons ----- */
@@ -976,6 +1013,8 @@ function icCheck(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="current
 function icCoffee(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h11v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V8Z"/><path d="M16 9h2.5a2.5 2.5 0 0 1 0 5H16"/><path d="M8 3.4c-.5.7-.5 1.5 0 2.2M11 3.4c-.5.7-.5 1.5 0 2.2"/></svg>'; }
 function icFit(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M4 8.5v7M17.5 6.5v11M20 8.5v7M6.5 12h11"/></svg>'; }
 function icLock(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>'; }
+function icPlay(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l6-3.5-6-3.5Z" fill="currentColor" stroke="none"/></svg>'; }
+function icCert(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="m9 12.5-1.5 7L12 17l4.5 2.5L15 12.5"/></svg>'; }
 function escapeJs(s){ return String(s==null?"":s).replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/"/g,"&quot;").replace(/\n/g," "); }
 
 /* ---------- polling ---------- */
