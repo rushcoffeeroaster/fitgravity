@@ -131,10 +131,15 @@ textarea{ resize:vertical; min-height:60px; }
 .type-pill{ padding:3px 9px; border-radius:999px; font-size:10.5px; font-weight:700; background:var(--accent-soft); color:var(--accent-deep); }
 .type-pill.rest{ background:rgba(167,182,206,.14); color:var(--ink-2); }
 .day-edit-body{ padding:12px 14px; border-top:1px solid var(--line); }
-.ex-edit{ display:flex; gap:6px; margin-bottom:7px; align-items:flex-start; }
+.ex-edit-wrap{ margin-bottom:7px; }
+.ex-edit{ display:flex; gap:6px; align-items:flex-start; }
 .ex-edit .exname{ flex:2; }
 .ex-edit .exnum{ flex:1; min-width:0; }
 .ex-del{ width:34px; flex-shrink:0; border:1px solid var(--line-strong); background:var(--surface-2); color:var(--red); border-radius:9px; cursor:pointer; font-size:16px; display:grid; place-items:center; }
+.ex-media-btn{ width:34px; flex-shrink:0; border:1px solid var(--line-strong); background:var(--surface-2); color:var(--ink-2); border-radius:9px; cursor:pointer; display:grid; place-items:center; }
+.ex-media-btn svg{ width:16px; height:16px; }
+.ex-media-btn.has{ color:var(--accent-deep); border-color:var(--accent); background:var(--accent-soft); }
+.ex-media-panel{ margin:6px 0 2px; padding:9px 10px; background:var(--surface-2); border:1px solid var(--line); border-radius:9px; }
 .add-ex{ display:inline-flex; align-items:center; gap:5px; color:var(--accent-deep); font-weight:700; font-size:12.5px; cursor:pointer; padding:6px 0; background:none; border:none; font-family:inherit; }
 
 /* meals to review */
@@ -260,6 +265,8 @@ var state = {
   editDays:null,            // program editor working copy
   clientQuery:"",
   articles:null,            // adminListArticles cache (loaded lazily on settings tab)
+  articleDraft:null,        // working copy while article modal is open (photo/video)
+  trainerDraft:null,        // working copy of "เกี่ยวกับโค้ช" section
   busy:false, loginErr:""
 };
 
@@ -277,6 +284,25 @@ function fmtDateY(ds){ if(!ds) return "-"; var p=String(ds).slice(0,10).split("-
 function fmtDT(s){ if(!s) return ""; var str=String(s); return fmtDate(str.slice(0,10))+" "+str.slice(11,16); }
 function num1(v){ var n=Number(v); return isNaN(n)?"-":(Math.round(n*10)/10).toLocaleString("th-TH"); }
 function initials(n){ n=String(n||"").trim(); return n?n.charAt(0):"?"; }
+function resizeImage(file, maxDim, q){
+  return new Promise(function(resolve,reject){
+    var url=URL.createObjectURL(file);
+    var img=new Image();
+    img.onload=function(){
+      try{
+        var scale=Math.min(1, maxDim/Math.max(img.width,img.height));
+        var w=Math.max(1,Math.round(img.width*scale)), h=Math.max(1,Math.round(img.height*scale));
+        var cv=document.createElement("canvas"); cv.width=w; cv.height=h;
+        cv.getContext("2d").drawImage(img,0,0,w,h);
+        var dataUrl=cv.toDataURL("image/jpeg", q);
+        URL.revokeObjectURL(url);
+        resolve({ base64:dataUrl.split(",")[1], mime:"image/jpeg", preview:dataUrl });
+      }catch(e){ reject(e); }
+    };
+    img.onerror=reject;
+    img.src=url;
+  });
+}
 
 async function apiCall(action, payload){
   var res;
@@ -323,7 +349,7 @@ async function doLogin(){
   }catch(e){ state.loginErr=e.message; state.pin=null; }
   state.busy=false; render();
 }
-function doLogout(){ store.del("fg_admin_pin"); state.pin=null; state.data=null; state.detail=null; state.articles=null; state.view="login"; render(); }
+function doLogout(){ store.del("fg_admin_pin"); state.pin=null; state.data=null; state.detail=null; state.articles=null; state.articleDraft=null; state.trainerDraft=null; state.view="login"; render(); }
 async function reload(quiet){
   try{ state.data=await apiCall("adminGetAll", withPin()); document.getElementById("errorBox").innerHTML=""; if(!quiet) showToast("อัปเดตแล้ว"); }
   catch(e){ document.getElementById("errorBox").innerHTML='<div class="err-box">'+escapeHtml(e.message)+'</div>'; }
@@ -589,7 +615,8 @@ function ensureEditDays(){
   state.editDays=[1,2,3,4,5,6,7].map(function(d){
     var p=byDay[d]||{};
     return { day:d, type:p.type||(d===7?"rest":"weights"), title:p.title||"",
-      items:(p.items||[]).map(function(it){ return {name:it.name||"",sets:it.sets||"",reps:it.reps||"",rest:it.rest||""}; }),
+      items:(p.items||[]).map(function(it){ return {name:it.name||"",sets:it.sets||"",reps:it.reps||"",rest:it.rest||"",
+        photoUrl:it.photoUrl||"",videoUrl:it.videoUrl||""}; }),
       note:p.note||"", open:false };
   });
 }
@@ -616,11 +643,25 @@ function renderDetailProgram(b){
       if(dd.type!=="rest"){
         html+='<label class="label">ท่าออกกำลัง</label>';
         dd.items.forEach(function(it,j){
-          html+='<div class="ex-edit">'+
+          var photoPreview = it.photoPreview || it.photoUrl || "";
+          var hasMedia = !!(photoPreview || it.videoUrl);
+          html+='<div class="ex-edit-wrap"><div class="ex-edit">'+
             '<input class="exname" value="'+escapeHtml(it.name)+'" oninput="setEx('+idx+','+j+',\'name\',this.value)" placeholder="ชื่อท่า">'+
             '<input class="exnum" value="'+escapeHtml(it.sets)+'" oninput="setEx('+idx+','+j+',\'sets\',this.value)" placeholder="เซ็ต">'+
             '<input class="exnum" value="'+escapeHtml(it.reps)+'" oninput="setEx('+idx+','+j+',\'reps\',this.value)" placeholder="ครั้ง/เวลา">'+
+            '<button class="ex-media-btn'+(hasMedia?" has":"")+'" onclick="toggleExMedia('+idx+','+j+')" title="รูป/คลิปสาธิต">'+icCamera()+'</button>'+
             '<button class="ex-del" onclick="delEx('+idx+','+j+')">×</button></div>';
+          if(it.mediaOpen){
+            html+='<div class="ex-media-panel">'+
+              (photoPreview?'<img src="'+escapeHtml(photoPreview)+'" style="width:72px;height:72px;object-fit:cover;border-radius:9px;border:1px solid var(--line-strong);margin-bottom:7px;display:block">':'')+
+              '<div class="row" style="margin-bottom:7px">'+
+              '<label class="btn-ghost btn-sm" style="flex:1;text-align:center;cursor:pointer">'+(photoPreview?"เปลี่ยนรูป":"เพิ่มรูปสาธิต")+'<input type="file" accept="image/*" style="display:none" onchange="pickExPhoto('+idx+','+j+',this)"></label>'+
+              (photoPreview?'<button class="btn-ghost btn-sm" onclick="removeExPhoto('+idx+','+j+')">ลบรูป</button>':'')+
+              '</div>'+
+              '<input value="'+escapeHtml(it.videoUrl||"")+'" oninput="setEx('+idx+','+j+',\'videoUrl\',this.value)" placeholder="ลิงก์คลิปสาธิต (YouTube/Facebook/TikTok ไม่ใส่ก็ได้)">'+
+              '</div>';
+          }
+          html+='</div>';
         });
         html+='<button class="add-ex" onclick="addEx('+idx+')">+ เพิ่มท่า</button>';
       }
@@ -637,13 +678,29 @@ function toggleEditDay(i){ state.editDays[i].open=!state.editDays[i].open; rende
 function setDayType(i,v){ state.editDays[i].type=v; if(v==="rest") state.editDays[i].items=[]; render(); }
 function setDayField(i,f,v){ state.editDays[i][f]=v; }
 function setEx(i,j,f,v){ state.editDays[i].items[j][f]=v; }
-function addEx(i){ state.editDays[i].items.push({name:"",sets:"",reps:"",rest:""}); render(); }
+function addEx(i){ state.editDays[i].items.push({name:"",sets:"",reps:"",rest:"",photoUrl:"",videoUrl:""}); render(); }
 function delEx(i,j){ state.editDays[i].items.splice(j,1); render(); }
+function toggleExMedia(i,j){ state.editDays[i].items[j].mediaOpen=!state.editDays[i].items[j].mediaOpen; render(); }
+async function pickExPhoto(i,j,input){
+  var f=input.files&&input.files[0];
+  if(!f) return;
+  try{
+    var ph=await resizeImage(f, 900, 0.72);
+    var it=state.editDays[i].items[j];
+    it.photoBase64=ph.base64; it.photoMime=ph.mime; it.photoPreview=ph.preview;
+    render();
+  }catch(e){ showToast("อ่านรูปไม่สำเร็จ ลองใหม่อีกครั้ง"); }
+}
+function removeExPhoto(i,j){
+  var it=state.editDays[i].items[j];
+  it.photoBase64=null; it.photoMime=null; it.photoPreview=null; it.photoUrl="";
+  render();
+}
 function applyTemplate(key){
   var t=TEMPLATES[key]; if(!t) return;
   state.editDays=t.days.map(function(p){
     return { day:p.day, type:p.type, title:p.title, note:p.note||"", open:false,
-      items:(p.items||[]).map(function(it){ return {name:it.name,sets:it.sets||"",reps:it.reps||"",rest:it.rest||""}; }) };
+      items:(p.items||[]).map(function(it){ return {name:it.name,sets:it.sets||"",reps:it.reps||"",rest:it.rest||"",photoUrl:"",videoUrl:""}; }) };
   });
   showToast("ใส่เทมเพลต "+t.name+" แล้ว — ปรับแก้แล้วกดบันทึก");
   render();
@@ -651,7 +708,12 @@ function applyTemplate(key){
 async function saveProgram(){
   var days=state.editDays.map(function(dd){
     return { day:dd.day, dayLabel:DAY_LABELS[dd.day], type:dd.type, title:dd.title,
-      note:dd.note, items:(dd.type==="rest"?[]:dd.items.filter(function(it){ return String(it.name||"").trim(); })) };
+      note:dd.note, items:(dd.type==="rest"?[]:dd.items.filter(function(it){ return String(it.name||"").trim(); })
+        .map(function(it){
+          var o={ name:it.name, sets:it.sets, reps:it.reps, rest:it.rest, photoUrl:it.photoUrl||"", videoUrl:it.videoUrl||"" };
+          if(it.photoBase64){ o.photoBase64=it.photoBase64; o.photoMime=it.photoMime; }
+          return o;
+        })) };
   });
   state.busy=true; render();
   try{
@@ -863,10 +925,96 @@ function renderSettings(){
     });
   }
 
+  html+=renderTrainerSection();
+
   html+='<div class="card"><div style="font-weight:700;margin-bottom:6px">ลิงก์แอปลูกค้า</div>'+
     '<div class="hint" style="word-break:break-all">'+escapeHtml((function(){try{return new URL("fit.html",location.href).href;}catch(e){return "fit.html";}})())+'</div></div>';
   html+='<button class="btn-ghost btn-block" onclick="doLogout()">ออกจากระบบ</button>';
   return html;
+}
+function ensureTrainerDraft(){
+  if(state.trainerDraft) return;
+  var ti=(state.data&&state.data.trainerInfo)||{};
+  state.trainerDraft = {
+    name: ti.name||"", bio: ti.bio||"",
+    photo: null, photoUrl: ti.photoUrl||"",
+    certs: (ti.certUrls||[]).map(function(u){ return {url:u}; })
+  };
+}
+function renderTrainerSection(){
+  ensureTrainerDraft();
+  var d=state.trainerDraft;
+  var html = '<h2>เกี่ยวกับโค้ช (แสดงในแอปลูกค้า)</h2><div class="card">';
+  html += '<div class="field"><label class="label">รูปโปรไฟล์โค้ช</label><div id="tr-photo-box">'+renderTrainerPhotoBox()+'</div></div>';
+  html += '<div class="field"><label class="label">ชื่อโค้ช</label><input id="tr-name" value="'+escapeHtml(d.name)+'" placeholder="ชื่อ-นามสกุล หรือชื่อเล่น"></div>';
+  html += '<div class="field"><label class="label">ประวัติ/ความเชี่ยวชาญ</label><textarea id="tr-bio" style="min-height:100px" placeholder="ประสบการณ์ ความเชี่ยวชาญ แนวทางการเทรน">'+escapeHtml(d.bio)+'</textarea></div>';
+  html += '<div class="field"><label class="label">ใบรับรอง/วุฒิบัตร (ใส่ได้หลายรูป)</label><div id="tr-certs-box">'+renderTrainerCertsBox()+'</div></div>';
+  html += '<button class="btn-primary btn-block" onclick="saveTrainerInfo()" '+(state.busy?"disabled":"")+'>บันทึกข้อมูลโค้ช</button></div>';
+  return html;
+}
+function renderTrainerPhotoBox(){
+  var d=state.trainerDraft;
+  var preview = d.photo ? d.photo.preview : d.photoUrl;
+  return (preview?'<img src="'+escapeHtml(preview)+'" style="width:92px;height:92px;object-fit:cover;border-radius:50%;border:1px solid var(--line-strong);margin-bottom:8px;display:block">':'')+
+    '<div class="row" style="margin-bottom:0">'+
+    '<label class="btn-ghost btn-sm" style="flex:1;text-align:center;cursor:pointer">'+(preview?"เปลี่ยนรูป":"เลือกรูป")+'<input type="file" accept="image/*" style="display:none" onchange="pickTrainerPhoto(this)"></label>'+
+    (preview?'<button class="btn-ghost btn-sm" onclick="removeTrainerPhoto()">ลบรูป</button>':'')+
+    '</div>';
+}
+function renderTrainerCertsBox(){
+  var d=state.trainerDraft;
+  var html='';
+  if(d.certs.length){
+    html+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">';
+    d.certs.forEach(function(ct,i){
+      var src = ct.preview || ct.url;
+      html+='<div style="position:relative"><img src="'+escapeHtml(src)+'" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--line-strong)">'+
+        '<button onclick="removeTrainerCert('+i+')" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--red);color:#fff;border:none;font-size:12px;cursor:pointer;line-height:1;padding:0">×</button></div>';
+    });
+    html+='</div>';
+  }
+  html+='<label class="btn-ghost btn-sm" style="cursor:pointer;display:inline-block">+ เพิ่มรูปใบรับรอง<input type="file" accept="image/*" style="display:none" onchange="pickTrainerCert(this)"></label>';
+  return html;
+}
+async function pickTrainerPhoto(input){
+  var f=input.files&&input.files[0];
+  if(!f) return;
+  try{
+    var ph=await resizeImage(f, 700, 0.75);
+    state.trainerDraft.photo=ph;
+    document.getElementById("tr-photo-box").innerHTML=renderTrainerPhotoBox();
+  }catch(e){ showToast("อ่านรูปไม่สำเร็จ ลองใหม่อีกครั้ง"); }
+}
+function removeTrainerPhoto(){
+  state.trainerDraft.photo=null; state.trainerDraft.photoUrl="";
+  document.getElementById("tr-photo-box").innerHTML=renderTrainerPhotoBox();
+}
+async function pickTrainerCert(input){
+  var f=input.files&&input.files[0];
+  if(!f) return;
+  try{
+    var ph=await resizeImage(f, 1000, 0.72);
+    state.trainerDraft.certs.push({ base64:ph.base64, mime:ph.mime, preview:ph.preview });
+    document.getElementById("tr-certs-box").innerHTML=renderTrainerCertsBox();
+  }catch(e){ showToast("อ่านรูปไม่สำเร็จ ลองใหม่อีกครั้ง"); }
+}
+function removeTrainerCert(i){
+  state.trainerDraft.certs.splice(i,1);
+  document.getElementById("tr-certs-box").innerHTML=renderTrainerCertsBox();
+}
+async function saveTrainerInfo(){
+  var d=state.trainerDraft;
+  var p={ name:val("tr-name"), bio:val("tr-bio") };
+  if(d.photo){ p.photoBase64=d.photo.base64; p.photoMime=d.photo.mime; } else { p.photoUrl=d.photoUrl||""; }
+  p.certs = d.certs.map(function(ct){ return ct.base64 ? { base64:ct.base64, mime:ct.mime } : { url:ct.url }; });
+  state.busy=true; render();
+  try{
+    var r=await apiCall("adminSaveTrainerInfo", withPin(p));
+    state.data.trainerInfo=r.trainerInfo;
+    state.trainerDraft=null;
+    showToast("บันทึกข้อมูลโค้ชแล้ว");
+  }catch(e){ showToast(e.message); }
+  state.busy=false; render();
 }
 async function togglePromo(on){
   state.busy=true;
@@ -897,23 +1045,51 @@ async function loadArticles(){
 function openSaveArticle(articleId){
   var a=null;
   if(articleId && state.articles){ state.articles.forEach(function(x){ if(x.articleId===articleId) a=x; }); }
+  state.articleDraft = { photo:null, photoUrl:a?(a.photoUrl||""):"", videoUrl:a?(a.videoUrl||""):"" };
   var idAttr = a ? ("'"+escapeJs(a.articleId)+"'") : "null";
   openOverlay('<h3>'+(a?"แก้ไขบทความ":"เพิ่มบทความใหม่")+'</h3>'+
     '<div class="field"><label class="label">หัวข้อ *</label><input id="ar-title" value="'+escapeHtml(a?a.title:"")+'" placeholder="ชื่อบทความ"></div>'+
     '<div class="row"><div style="flex:1"><label class="label">คำเปิด/mood (ไม่ใส่ก็ได้)</label><input id="ar-mood" value="'+escapeHtml(a?a.mood:"")+'" placeholder="เช่น CALM, POWER, REAL"></div>'+
     '<div style="flex:1"><label class="label">วันที่เผยแพร่</label><input id="ar-date" type="date" value="'+escapeHtml(a?a.publishDate:todayISO())+'"></div></div>'+
     '<div class="field"><label class="label">เนื้อหา *</label><textarea id="ar-body" style="min-height:140px" placeholder="เนื้อหาบทความ/เทคนิค">'+escapeHtml(a?a.body:"")+'</textarea></div>'+
+    '<div class="field"><label class="label">รูปประกอบ (ไม่ใส่ก็ได้)</label><div id="ar-photo-box">'+renderArticlePhotoBox()+'</div></div>'+
+    '<div class="field"><label class="label">ลิงก์วิดีโอ (YouTube/Facebook/TikTok ไม่ใส่ก็ได้)</label><input id="ar-video" value="'+escapeHtml(a?(a.videoUrl||""):"")+'" placeholder="วางลิงก์วิดีโอที่นี่"></div>'+
     '<p class="hint" style="margin-bottom:10px">ลูกค้าจะเห็นบทความนี้ได้ก็ต่อเมื่อสแกนซื้อเครื่องดื่มตั้งแต่วันที่เผยแพร่เป็นต้นไป</p>'+
     '<div class="modal-actions"><button class="btn-ghost" onclick="closeOverlay()">ยกเลิก</button>'+
     '<button class="btn-primary" onclick="submitSaveArticle('+idAttr+')">บันทึก</button></div>');
 }
+function renderArticlePhotoBox(){
+  var d=state.articleDraft||{};
+  var preview = d.photo ? d.photo.preview : d.photoUrl;
+  return (preview?'<img src="'+escapeHtml(preview)+'" style="width:100%;max-height:180px;object-fit:cover;border-radius:10px;margin-bottom:6px;border:1px solid var(--line-strong)">':'')+
+    '<div class="row" style="margin-bottom:0">'+
+    '<label class="btn-ghost btn-sm" style="flex:1;text-align:center;cursor:pointer">'+(preview?"เปลี่ยนรูป":"เลือกรูป")+'<input type="file" accept="image/*" style="display:none" onchange="pickArticlePhoto(this)"></label>'+
+    (preview?'<button class="btn-ghost btn-sm" onclick="removeArticlePhoto()">ลบรูป</button>':'')+
+    '</div>';
+}
+async function pickArticlePhoto(input){
+  var f=input.files&&input.files[0];
+  if(!f) return;
+  try{
+    var ph=await resizeImage(f, 900, 0.72);
+    state.articleDraft.photo=ph;
+    document.getElementById("ar-photo-box").innerHTML=renderArticlePhotoBox();
+  }catch(e){ showToast("อ่านรูปไม่สำเร็จ ลองใหม่อีกครั้ง"); }
+}
+function removeArticlePhoto(){
+  state.articleDraft.photo=null; state.articleDraft.photoUrl="";
+  document.getElementById("ar-photo-box").innerHTML=renderArticlePhotoBox();
+}
 async function submitSaveArticle(articleId){
-  var art={ title:val("ar-title"), body:val("ar-body"), mood:val("ar-mood"), publishDate:val("ar-date") };
+  var d=state.articleDraft||{};
+  var art={ title:val("ar-title"), body:val("ar-body"), mood:val("ar-mood"), publishDate:val("ar-date"), videoUrl:val("ar-video") };
   if(articleId) art.articleId=articleId;
   if(!art.title||!art.body){ showToast("กรอกหัวข้อและเนื้อหาให้ครบ"); return; }
+  if(d.photo){ art.photoBase64=d.photo.base64; art.photoMime=d.photo.mime; }
+  else { art.photoUrl = d.photoUrl||""; }
   try{
     var r=await apiCall("adminSaveArticle", withPin({ article:art }));
-    state.articles=r.articles; closeOverlay(); showToast("บันทึกบทความแล้ว"); render();
+    state.articles=r.articles; state.articleDraft=null; closeOverlay(); showToast("บันทึกบทความแล้ว"); render();
   }catch(e){ showToast(e.message); }
 }
 async function deleteArticle(articleId){
@@ -1064,6 +1240,7 @@ async function submitIssueFastTrack(){
 /* icons */
 function icCoffee(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h11v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V8Z"/><path d="M16 9h2.5a2.5 2.5 0 0 1 0 5H16"/><path d="M8 3.4c-.5.7-.5 1.5 0 2.2M11 3.4c-.5.7-.5 1.5 0 2.2"/></svg>'; }
 function icFit(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M4 8.5v7M17.5 6.5v11M20 8.5v7M6.5 12h11"/></svg>'; }
+function icCamera(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-2.5h6L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.4"/></svg>'; }
 
 /* polling */
 setInterval(async function(){
