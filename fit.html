@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <title>Fit Gravity · Training Online</title>
+<link rel="manifest" href="manifest-customer.json">
+<meta name="theme-color" content="#0F1B33">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Fit Gravity">
+<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiByeD0iNSIgZmlsbD0iI2U4OTMwYyIvPjxwYXRoIGQ9Ik02LjUgNi41djExTTQgOC41djdNMTcuNSA2LjV2MTFNMjAgOC41djdNNi41IDEyaDExIiBzdHJva2U9IiMyNDE3MDMiIHN0cm9rZS13aWR0aD0iMS45IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGZpbGw9Im5vbmUiLz48L3N2Zz4=">
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiByeD0iNSIgZmlsbD0iI2U4OTMwYyIvPjxwYXRoIGQ9Ik02LjUgNi41djExTTQgOC41djdNMTcuNSA2LjV2MTFNMjAgOC41djdNNi41IDEyaDExIiBzdHJva2U9IiMyNDE3MDMiIHN0cm9rZS13aWR0aD0iMS45IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGZpbGw9Im5vbmUiLz48L3N2Zz4=">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700;800&family=Orbitron:wght@600;800&display=swap" rel="stylesheet">
@@ -89,6 +97,8 @@ textarea{ resize:vertical; min-height:64px; }
 /* ==== components ==== */
 .icon-btn{ width:36px; height:36px; border-radius:10px; border:1px solid var(--line-strong); background:var(--surface); display:grid; place-items:center; color:var(--ink-2); cursor:pointer; flex-shrink:0; }
 .icon-btn svg{ width:18px; height:18px; }
+.install-btn{ display:inline-flex; align-items:center; gap:5px; background:var(--accent-grad); color:var(--on-accent); border:none; border-radius:999px; padding:0 12px; height:34px; font-size:12px; font-weight:800; cursor:pointer; white-space:nowrap; box-shadow:var(--shadow-sm); flex-shrink:0; font-family:inherit; }
+.install-btn svg{ width:15px; height:15px; }
 .appbar-actions{ display:flex; gap:7px; }
 .login-hero{ text-align:center; padding:26px 0 12px; }
 .login-hero .biglogo{ width:70px; height:70px; border-radius:21px; margin:0 auto 14px; display:grid; place-items:center; color:var(--on-accent); background:var(--accent-grad); box-shadow:var(--shadow-md), inset 0 1px 0 rgba(255,255,255,.45); }
@@ -472,10 +482,10 @@ function render(){
   var nav=document.getElementById("bottomNav");
   var actions=document.getElementById("appbarActions");
   nav.style.display = state.view==="home" ? "block" : "none";
-  actions.innerHTML = state.view==="home"
+  actions.innerHTML = (state.view==="home"
     ? '<button class="icon-btn" onclick="refreshData()" title="รีเฟรช"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg></button>'+
       '<button class="icon-btn" onclick="doLogout()" title="ออกจากระบบ"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg></button>'
-    : "";
+    : "") + installBtnHtml();
   if (state.view==="boot"){ c.innerHTML='<div class="loading-text">กำลังโหลด...</div>'; return; }
   if (state.view==="login"){ c.innerHTML=renderLogin(); return; }
   if (state.view==="register"){ c.innerHTML=renderRegister(); return; }
@@ -1034,6 +1044,63 @@ setInterval(async function(){
     state.data=d; render();
   }catch(e){}
 }, 30000);
+
+/* ---------- PWA install ---------- */
+var deferredInstallPrompt = null;
+var pwaIsIOS = /iP(hone|od|ad)/.test(navigator.userAgent) && !window.MSStream;
+var pwaIsStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+function installBtnHtml(){
+  if (pwaIsStandalone) return "";
+  if (!deferredInstallPrompt && !pwaIsIOS) return "";
+  return '<button class="install-btn" onclick="onInstallClick()" title="ติดตั้งแอปลงเครื่อง">'+
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0-4-4m4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>'+
+    '<span>ติดตั้งแอป</span></button>';
+}
+
+window.addEventListener('beforeinstallprompt', function(e){
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  render();
+});
+window.addEventListener('appinstalled', function(){
+  deferredInstallPrompt = null;
+  pwaIsStandalone = true;
+  render();
+});
+
+function onInstallClick(){
+  if (deferredInstallPrompt){
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt.userChoice.then(function(){ deferredInstallPrompt=null; render(); });
+    return;
+  }
+  showInstallHelp();
+}
+
+function showInstallHelp(){
+  var old=document.getElementById("pwaHelpOverlay"); if(old) old.remove();
+  var box=document.createElement("div");
+  box.id="pwaHelpOverlay";
+  box.style.cssText="position:fixed;inset:0;background:rgba(6,11,22,.72);z-index:400;display:flex;align-items:flex-end;justify-content:center";
+  box.onclick=function(e){ if(e.target===box) box.remove(); };
+  box.innerHTML='<div style="background:var(--surface);border:1px solid var(--line);border-radius:18px 18px 0 0;padding:20px 18px 26px;max-width:480px;width:100%">'+
+    '<div style="font-weight:800;font-size:15px;margin-bottom:10px">วิธีติดตั้งแอปลงเครื่อง</div>'+
+    '<div style="font-size:13px;color:var(--ink-2);line-height:1.85">'+
+    (pwaIsIOS
+      ? '1. แตะปุ่มแชร์ (สี่เหลี่ยมมีลูกศรชี้ขึ้น) แถบด้านล่างของ Safari<br>2. เลื่อนหา แล้วแตะ “เพิ่มไปยังหน้าจอโฮม” (Add to Home Screen)<br>3. แตะ “เพิ่ม” ที่มุมขวาบน'
+      : '• iPhone: เปิดด้วย Safari แล้วแตะปุ่มแชร์ 􀈂 ด้านล่าง เลือก “เพิ่มไปยังหน้าจอโฮม”<br>• Android: เปิดด้วย Chrome แตะเมนู ⋮ มุมขวาบน เลือก “ติดตั้งแอป” หรือ “เพิ่มไปยังหน้าจอโฮม”')+
+    '</div>'+
+    '<button class="btn-primary btn-block" style="margin-top:16px" onclick="document.getElementById(\'pwaHelpOverlay\').remove()">เข้าใจแล้ว</button>'+
+    '</div>';
+  document.body.appendChild(box);
+}
+
+if ('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+  });
+}
 
 boot();
 </script>
